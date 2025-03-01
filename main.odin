@@ -56,9 +56,10 @@ main :: proc() {
 	Screen_Width :: 800
 	Screen_Height :: 450
 
-	rl.InitWindow(Screen_Width, Screen_Height, "window name here~")
+	rl.InitWindow(Screen_Width, Screen_Height, "ETERNALOID")
 	rl.SetTargetFPS(60)
-
+	rl.SetWindowState(rl.ConfigFlags{.WINDOW_RESIZABLE})
+	rl.SetWindowState(rl.ConfigFlags{.WINDOW_ALWAYS_RUN})
 
 	textures := [?]rl.Texture{rl.LoadTexture("house_lv1.png")}
 	
@@ -72,21 +73,30 @@ tile_data := [?]i32{
   0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,1,0,
   0,0,0,0,0,0,0,0,0,0
   };
 // odinfmt: enable
 
 	img_cache := make(map[nl.image_key]rl.Texture)
-  x_haha : i32 = 0
+	window := nl.window_data {
+		original_width  = Screen_Width,
+		original_height = Screen_Height,
+		present_width   = Screen_Width,
+		present_height  = Screen_Height,
+		image_cache_map = img_cache,
+	}
+
+
+	x_haha: i32 = 0
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
 		// rl.DrawText("here~", 49, 36, 58, rl.LIGHTGRAY)
-		nl.draw_png(x_haha, 32, "bongbongbutpixelz.png", &img_cache, 5)
+		nl.draw_png(x_haha, 32, "bongbongbutpixelz.png", window, 5)
 		tile_draw(tile_data, textures, 10, 10, 50, 50, 16)
 		rl.EndDrawing()
-    x_haha = x_haha + 1 
+		x_haha = x_haha + 1
 	}
 
 	rl.CloseWindow()

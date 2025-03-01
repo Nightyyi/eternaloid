@@ -4,6 +4,16 @@ import "core:fmt"
 import "core:strings"
 import rl "vendor:raylib"
 
+window_data :: struct {
+  original_width:  i32,
+  original_height: i32,
+  present_width:   i32,
+  present_height:  i32,
+  image_cache_map: map[image_key]rl.Texture,
+}
+
+
+
 image_key :: struct {
 	string_key: string,
 	size_key:   f32,
@@ -40,9 +50,9 @@ draw_png :: proc(
 	x: i32,
 	y: i32,
 	png_name: string,
-	image_cache_map: ^map[image_key]rl.Texture,
+	window: window_data,
 	size: f32 = 1,
 ) {
-	texture: rl.Texture = pull_texture(png_name, image_cache_map, size)
+	texture: rl.Texture = pull_texture(png_name, window.image_cache_map^, size)
 	rl.DrawTextureEx(texture, rl.Vector2{f32(x), f32(y)}, 0, size ,rl.Color{255, 255, 255, 255} )
 }
