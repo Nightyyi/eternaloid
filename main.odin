@@ -60,7 +60,6 @@ main :: proc() {
 	rl.SetTargetFPS(60)
 
 
-	texture := rl.LoadTexture("bongbongbutpixelz.png")
 	textures := [?]rl.Texture{rl.LoadTexture("house_lv1.png")}
 	
 // odinfmt: disable
@@ -79,20 +78,15 @@ tile_data := [?]i32{
 // odinfmt: enable
 
 	img_cache := make(map[nl.image_key]rl.Texture)
-
+  x_haha : i32 = 0
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
 		// rl.DrawText("here~", 49, 36, 58, rl.LIGHTGRAY)
-		nl.draw_png(32, 32, "bongbongbutpixelz.png", img_cache)
-		rl.DrawTexture(
-			texture,
-			Screen_Width / 2 - texture.width / 2,
-			Screen_Height / 2 - texture.height / 2,
-			rl.Color{255, 255, 255, 255},
-		)
+		nl.draw_png(x_haha, 32, "bongbongbutpixelz.png", &img_cache, 5)
 		tile_draw(tile_data, textures, 10, 10, 50, 50, 16)
 		rl.EndDrawing()
+    x_haha = x_haha + 1 
 	}
 
 	rl.CloseWindow()
