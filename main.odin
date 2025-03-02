@@ -71,17 +71,17 @@ main :: proc() {
     0,0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,1,0,
     0,0,0,0,0,0,0,0,0,0
-  };
+  }
   // odinfmt: enable
 
-	img_cache := make(map[nl.image_key]rl.Texture)
-	window := nl.window_data {
-		original_width  = Screen_Width,
-		original_height = Screen_Height,
-		present_width   = Screen_Width,
-		present_height  = Screen_Height,
-		image_cache_map = img_cache,
-	}
+  img_cache := make(map[nl.image_key]rl.Texture)
+  window := nl.window_data {
+    original_width  = Screen_Width,
+    original_height = Screen_Height,
+    present_width   = Screen_Width,
+    present_height  = Screen_Height,
+    image_cache_map = img_cache,
+  }
 
 
 	for !rl.WindowShouldClose() {
@@ -94,7 +94,6 @@ main :: proc() {
 			window.image_cache_map = img_cache
 
 		}
-
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
 
