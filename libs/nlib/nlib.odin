@@ -21,8 +21,8 @@ get_virtual_window :: proc(window: ^window_data) -> (i32, i32, f64) {
 	width_ratio := f64(window.present_width) / f64(window.original_width)
 	height_ratio := f64(window.present_height) / f64(window.original_height)
 
-	ratio: f64 
-  ratio = min(height_ratio,width_ratio)
+	ratio: f64
+	ratio = min(height_ratio, width_ratio)
 
 	v_width := i32(f64(window.original_width) * ratio)
 	v_height := i32(f64(window.original_height) * ratio)
@@ -75,7 +75,14 @@ draw_png :: proc(x: i32, y: i32, png_name: string, window: ^window_data, size: f
 }
 
 
-draw_rectangle :: proc(x: i32, y: i32, width: i32, height: i32, window: ^window_data) {
+draw_rectangle :: proc(
+	x: i32,
+	y: i32,
+	width: i32,
+	height: i32,
+	window: ^window_data,
+	color: rl.Color,
+) {
 	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
 	padding_x := (window.present_width - virtual_width) / 2
 	padding_y := (window.present_height - virtual_height) / 2
@@ -86,6 +93,43 @@ draw_rectangle :: proc(x: i32, y: i32, width: i32, height: i32, window: ^window_
 		i32(virtual_y),
 		i32(f64(width) * virtual_ratio),
 		i32(f64(height) * virtual_ratio),
-		rl.Color{255, 255, 255, 255},
+		color,
 	)
+}
+
+
+draw_borders :: proc(window: ^window_data) {
+	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
+	padding_x := (window.present_width - virtual_width) / 2
+	padding_y := (window.present_height - virtual_height) / 2
+	rl.DrawRectangle(
+		i32(0),
+		i32(0),
+		i32(padding_x),
+		i32(window.present_height),
+		rl.Color{0, 0, 0, 255},
+	)
+	rl.DrawRectangle(
+		i32(padding_x + virtual_width),
+		i32(0),
+		i32(padding_x),
+		i32(window.present_height),
+		rl.Color{0, 0, 0, 255},
+	)
+	rl.DrawRectangle(
+		i32(0),
+		i32(0),
+		i32(window.present_width),
+		i32(padding_y),
+		rl.Color{0, 0, 0, 255},
+	)
+	rl.DrawRectangle(
+		i32(0),
+		i32(padding_y + virtual_height),
+		i32(window.present_width),
+		i32(padding_y),
+		rl.Color{0, 0, 0, 255},
+	)
+
+
 }
