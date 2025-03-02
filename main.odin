@@ -59,29 +59,29 @@ main :: proc() {
 
 	textures := [?]rl.Texture{rl.LoadTexture("house_lv1.png")}
 	
-  // odinfmt: disable
-  tile_data := [?]i32{
-    1,1,0,0,0,0,0,0,0,0,
-    0,1,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,1,0,
-    0,0,0,0,0,0,0,0,0,0
-  }
-  // odinfmt: enable
+	// odinfmt: disable
+	tile_data := [?]i32 {
+		1,1,0,0,0,0,0,0,0,0,
+		0,1,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,1,0,
+		0,0,0,0,0,0,0,0,0,0
+	}
+	// odinfmt: enable
 
-  img_cache := make(map[nl.image_key]rl.Texture)
-  window := nl.window_data {
-    original_width  = Screen_Width,
-    original_height = Screen_Height,
-    present_width   = Screen_Width,
-    present_height  = Screen_Height,
-    image_cache_map = img_cache,
-  }
+	img_cache := make(map[nl.image_key]rl.Texture)
+	window := nl.window_data {
+		original_width  = Screen_Width,
+		original_height = Screen_Height,
+		present_width   = Screen_Width,
+		present_height  = Screen_Height,
+		image_cache_map = img_cache,
+	}
 
 
 	for !rl.WindowShouldClose() {
@@ -100,7 +100,7 @@ main :: proc() {
 
 		// rl.DrawText("here~", 49, 36, 58, rl.LIGHTGRAY)
 		tile_set := [?]string{"house_lv1.png"}
-		tile_draw(tile_data, tile_set, 10, 10, 50, 50, 16, &window)
+		tile_draw(tile_data, tile_set, 10, 10, 50, 50, 32, &window)
 
 
 		nl.draw_borders(&window)

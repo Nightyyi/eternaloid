@@ -1,0 +1,69 @@
+From da9f627ef85c3c714194e04dc5d62c262b61f6a0 Mon Sep 17 00:00:00 2001
+From: maid <reception@noreply.maidagency.org>
+Date: Sun, 2 Mar 2025 16:25:04 +0800
+Subject: [PATCH] fix indent scheme
+
+---
+ main.odin | 46 +++++++++++++++++++++++-----------------------
+ 1 file changed, 23 insertions(+), 23 deletions(-)
+
+diff --git a/main.odin b/main.odin
+index e4ccf48..63d1cee 100644
+--- a/main.odin
++++ b/main.odin
+@@ -59,29 +59,29 @@ main :: proc() {
+ 
+ 	textures := [?]rl.Texture{rl.LoadTexture("house_lv1.png")}
+ 	
+-  // odinfmt: disable
+-  tile_data := [?]i32{
+-    1,1,0,0,0,0,0,0,0,0,
+-    0,1,0,0,0,0,0,0,0,0,
+-    0,0,0,0,0,0,0,0,0,0,
+-    0,0,0,0,0,0,0,0,0,0,
+-    0,0,0,0,0,0,0,0,0,0,
+-    0,0,0,0,0,0,0,0,0,0,
+-    0,0,0,0,0,0,0,0,0,0,
+-    0,0,0,0,0,0,0,0,0,0,
+-    0,0,0,0,0,0,0,0,1,0,
+-    0,0,0,0,0,0,0,0,0,0
+-  }
+-  // odinfmt: enable
+-
+-  img_cache := make(map[nl.image_key]rl.Texture)
+-  window := nl.window_data {
+-    original_width  = Screen_Width,
+-    original_height = Screen_Height,
+-    present_width   = Screen_Width,
+-    present_height  = Screen_Height,
+-    image_cache_map = img_cache,
+-  }
++	// odinfmt: disable
++	tile_data := [?]i32 {
++		1,1,0,0,0,0,0,0,0,0,
++		0,1,0,0,0,0,0,0,0,0,
++		0,0,0,0,0,0,0,0,0,0,
++		0,0,0,0,0,0,0,0,0,0,
++		0,0,0,0,0,0,0,0,0,0,
++		0,0,0,0,0,0,0,0,0,0,
++		0,0,0,0,0,0,0,0,0,0,
++		0,0,0,0,0,0,0,0,0,0,
++		0,0,0,0,0,0,0,0,1,0,
++		0,0,0,0,0,0,0,0,0,0
++	}
++	// odinfmt: enable
++
++	img_cache := make(map[nl.image_key]rl.Texture)
++	window := nl.window_data {
++		original_width  = Screen_Width,
++		original_height = Screen_Height,
++		present_width   = Screen_Width,
++		present_height  = Screen_Height,
++		image_cache_map = img_cache,
++	}
+ 
+ 
+ 	for !rl.WindowShouldClose() {
+-- 
+2.45.3
+
