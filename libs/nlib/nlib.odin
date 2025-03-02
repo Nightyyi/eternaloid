@@ -4,6 +4,14 @@ import "core:fmt"
 import "core:strings"
 import rl "vendor:raylib"
 
+mouse_data :: struct {
+	mouse_x:         i32,
+	mouse_y:         i32,
+	virtual_mouse_x: i32,
+	virtual_mouse_y: i32,
+	clicking:        bool,
+}
+
 window_data :: struct {
 	original_width:  i32,
 	original_height: i32,
@@ -16,6 +24,7 @@ image_key :: struct {
 	string_key: string,
 	size_key:   f32,
 }
+
 
 get_virtual_window :: proc(window: ^window_data) -> (i32, i32, f64) {
 	width_ratio := f64(window.present_width) / f64(window.original_width)
@@ -30,14 +39,14 @@ get_virtual_window :: proc(window: ^window_data) -> (i32, i32, f64) {
 	return v_width, v_height, ratio
 }
 
-get_virtual_x_y_ratio :: proc(x: i32, y:i32, window: ^window_data) -> (i32, i32, f64){
+get_virtual_x_y_ratio :: proc(x: i32, y: i32, window: ^window_data) -> (i32, i32, f64) {
 	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
 	padding_x := (window.present_width - virtual_width) / 2
 	padding_y := (window.present_height - virtual_height) / 2
 	virtual_x := i32(f64(x) * virtual_ratio) + padding_x
 	virtual_y := i32(f64(y) * virtual_ratio) + padding_y
 
-  return virtual_x, virtual_y, virtual_ratio
+	return virtual_x, virtual_y, virtual_ratio
 }
 
 acquire_texture :: proc(image_name: string) -> rl.Texture {
@@ -67,18 +76,9 @@ pull_texture :: proc(
 	}
 }
 
-draw_png :: proc(x: i32, y: i32, png_name: string, window: ^window_data, size: f32 = 1) {
-	texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
-  virtual_x, virtual_y, virtual_ratio = get_virtual_x_y_ratio()
-	rl.DrawTextureEx(
-		texture,
-		rl.Vector2{f32(virtual_x), f32(virtual_y)},
-		0,
-		size * f32(virtual_ratio),
-		rl.Color{255, 255, 255, 255},
-	)
+in_hitbox :: proc(x: i32, y: i32, width: i32, height: i32, mouse: mouse_data) -> bool {
+	return (0 < (mouse.virtual_mouse_x - x) < width) && (0 < (mouse.virtual_mouse_y - y) < height)
 }
-
 
 draw_rectangle :: proc(
 	x: i32,
@@ -88,11 +88,7 @@ draw_rectangle :: proc(
 	window: ^window_data,
 	color: rl.Color,
 ) {
-	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
-	padding_x := (window.present_width - virtual_width) / 2
-	padding_y := (window.present_height - virtual_height) / 2
-	virtual_x := i32(f64(x) * virtual_ratio) + padding_x
-	virtual_y := i32(f64(y) * virtual_ratio) + padding_y
+	virtual_x, virtual_y, virtual_ratio := get_virtual_x_y_ratio(x, y, window)
 	rl.DrawRectangle(
 		i32(virtual_x),
 		i32(virtual_y),
@@ -139,13 +135,9 @@ draw_borders :: proc(window: ^window_data) {
 
 }
 
-button_png_static :: proc(x: i32, y: i32, png_name: string, window: ^window_data, size: f32 = 1) -> {
+draw_png :: proc(x: i32, y: i32, png_name: string, window: ^window_data, size: f32 = 1) {
 	texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
-	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
-	padding_x := (window.present_width - virtual_width) / 2
-	padding_y := (window.present_height - virtual_height) / 2
-	virtual_x := i32(f64(x) * virtual_ratio) + padding_x
-	virtual_y := i32(f64(y) * virtual_ratio) + padding_y
+	virtual_x, virtual_y, virtual_ratio := get_virtual_x_y_ratio(x, y, window)
 	rl.DrawTextureEx(
 		texture,
 		rl.Vector2{f32(virtual_x), f32(virtual_y)},
@@ -153,4 +145,70 @@ button_png_static :: proc(x: i32, y: i32, png_name: string, window: ^window_data
 		size * f32(virtual_ratio),
 		rl.Color{255, 255, 255, 255},
 	)
+}
+
+button_png_s :: proc(
+	x: i32,
+	y: i32,
+	png_name: string,
+	window: ^window_data,
+	mouse: mouse_data,
+	size: f32 = 1,
+) -> bool {
+	texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
+	virtual_x, virtual_y, virtual_ratio := get_virtual_x_y_ratio(x, y, window)
+	rl.DrawTextureEx(
+		texture,
+		rl.Vector2{f32(virtual_x), f32(virtual_y)},
+		0,
+		size * f32(virtual_ratio),
+		rl.Color{255, 255, 255, 255},
+	)
+
+	return in_hitbox(virtual_x, virtual_y, texture.width, texture.height, mouse) && mouse.clicking
+}
+
+
+button_png_d :: proc(
+	x: i32,
+	y: i32,
+	png_name: [2]string,
+	window: ^window_data,
+	mouse: mouse_data,
+	size: f32 = 1,
+) -> bool {
+  button_clicked := in_hitbox(virtual_x, virtual_y, texture.width, texture.height, mouse) && mouse.clicking
+	texture: rl.Texture = pull_texture(png_name[int(button_clicked)], &window.image_cache_map, size)
+	virtual_x, virtual_y, virtual_ratio := get_virtual_x_y_ratio(x, y, window)
+	rl.DrawTextureEx(
+		texture,
+		rl.Vector2{f32(virtual_x), f32(virtual_y)},
+		0,
+		size * f32(virtual_ratio),
+		rl.Color{255, 255, 255, 255},
+	)
+
+	return button_clicked
+}
+
+button_png_t :: proc(
+	x: i32,
+	y: i32,
+	png_name: [3]string,
+	window: ^window_data,
+	mouse: mouse_data,
+	size: f32 = 1,
+) -> bool {
+	virtual_x, virtual_y, virtual_ratio := get_virtual_x_y_ratio(x, y, window)
+  on_button := in_hitbox(virtual_x, virtual_y, texture.width, texture.height, mouse)
+  button_clicked := on_button && mouse.clicking
+	rl.DrawTextureEx(
+		texture,
+		rl.Vector2{f32(virtual_x), f32(virtual_y)},
+		0,
+		size * f32(virtual_ratio),
+		rl.Color{255, 255, 255, 255},
+	)
+
+	return button_clicked
 }
