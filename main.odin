@@ -63,20 +63,20 @@ main :: proc() {
 
 	textures := [?]rl.Texture{rl.LoadTexture("house_lv1.png")}
 	
-// odinfmt: disable
-tile_data := [?]i32{
-  1,1,0,0,0,0,0,0,0,0,
-  0,1,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,1,0,
-  0,0,0,0,0,0,0,0,0,0
-  };
-// odinfmt: enable
+  // odinfmt: disable
+  tile_data := [?]i32{
+    1,1,0,0,0,0,0,0,0,0,
+    0,1,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,1,0,
+    0,0,0,0,0,0,0,0,0,0
+    };
+  // odinfmt: enable
 
 	img_cache := make(map[nl.image_key]rl.Texture)
 	window := nl.window_data {
@@ -90,10 +90,24 @@ tile_data := [?]i32{
 
 	x_haha: i32 = 0
 	for !rl.WindowShouldClose() {
+    
+    if rl.IsWindowResized(){
+      window.present_width = rl.GetScreenWidth()
+      window.present_height = rl.GetScreenHeight()
+      fmt.println("Window Resized!", rl.GetScreenWidth(), rl.GetScreenHeight())
+      delete(img_cache)
+      img_cache = make(map[nl.image_key]rl.Texture)
+      window.image_cache_map = img_cache
+
+    }
+
+
+
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
 		// rl.DrawText("here~", 49, 36, 58, rl.LIGHTGRAY)
-		nl.draw_png(x_haha, 32, "bongbongbutpixelz.png", window, 5)
+		nl.draw_rectangle(0, 0, 800, 450, &window)
+		nl.draw_png(x_haha, 32, "bongbongbutpixelz.png", &window, 5)
 		tile_draw(tile_data, textures, 10, 10, 50, 50, 16)
 		rl.EndDrawing()
 		x_haha = x_haha + 1
