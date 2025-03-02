@@ -30,6 +30,15 @@ get_virtual_window :: proc(window: ^window_data) -> (i32, i32, f64) {
 	return v_width, v_height, ratio
 }
 
+get_virtual_x_y_ratio :: proc(x: i32, y:i32, window: ^window_data) -> (i32, i32, f64){
+	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
+	padding_x := (window.present_width - virtual_width) / 2
+	padding_y := (window.present_height - virtual_height) / 2
+	virtual_x := i32(f64(x) * virtual_ratio) + padding_x
+	virtual_y := i32(f64(y) * virtual_ratio) + padding_y
+
+  return virtual_x, virtual_y, virtual_ratio
+}
 
 acquire_texture :: proc(image_name: string) -> rl.Texture {
 	image_name_C: cstring = strings.clone_to_cstring(image_name)
@@ -60,11 +69,7 @@ pull_texture :: proc(
 
 draw_png :: proc(x: i32, y: i32, png_name: string, window: ^window_data, size: f32 = 1) {
 	texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
-	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
-	padding_x := (window.present_width - virtual_width) / 2
-	padding_y := (window.present_height - virtual_height) / 2
-	virtual_x := i32(f64(x) * virtual_ratio) + padding_x
-	virtual_y := i32(f64(y) * virtual_ratio) + padding_y
+  virtual_x, virtual_y, virtual_ratio = get_virtual_x_y_ratio()
 	rl.DrawTextureEx(
 		texture,
 		rl.Vector2{f32(virtual_x), f32(virtual_y)},
@@ -132,4 +137,20 @@ draw_borders :: proc(window: ^window_data) {
 	)
 
 
+}
+
+button_png_static :: proc(x: i32, y: i32, png_name: string, window: ^window_data, size: f32 = 1) -> {
+	texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
+	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
+	padding_x := (window.present_width - virtual_width) / 2
+	padding_y := (window.present_height - virtual_height) / 2
+	virtual_x := i32(f64(x) * virtual_ratio) + padding_x
+	virtual_y := i32(f64(y) * virtual_ratio) + padding_y
+	rl.DrawTextureEx(
+		texture,
+		rl.Vector2{f32(virtual_x), f32(virtual_y)},
+		0,
+		size * f32(virtual_ratio),
+		rl.Color{255, 255, 255, 255},
+	)
 }

@@ -5,6 +5,8 @@ import rl "vendor:raylib"
 
 import "core:fmt"
 import "core:mem"
+import "core:encoding/json"
+
 
 tile_draw :: proc(
 	tile_data: $T,
@@ -108,4 +110,7 @@ main :: proc() {
 	}
 
 	rl.CloseWindow()
+
+  // crying 
+  delete(img_cache)
 }
