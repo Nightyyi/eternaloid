@@ -3,9 +3,9 @@ package rlib
 import nl "libs/nlib"
 import rl "vendor:raylib"
 
+import "core:encoding/json"
 import "core:fmt"
 import "core:mem"
-import "core:encoding/json"
 
 
 tile_draw :: proc(
@@ -85,6 +85,13 @@ main :: proc() {
 		image_cache_map = img_cache,
 	}
 
+	mouse := nl.mouse_data {
+		mouse_x         = 0,
+		mouse_y         = 0,
+		virtual_mouse_x = 0,
+		virtual_mouse_y = 0,
+		clicking        = false,
+	}
 
 	for !rl.WindowShouldClose() {
 
@@ -96,6 +103,9 @@ main :: proc() {
 			window.image_cache_map = img_cache
 
 		}
+
+		nl.update_mouse(&mouse, &window)
+
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
 
@@ -103,7 +113,16 @@ main :: proc() {
 		// rl.DrawText("here~", 49, 36, 58, rl.LIGHTGRAY)
 		tile_set := [?]string{"house_lv1.png"}
 		tile_draw(tile_data, tile_set, 10, 10, 50, 50, 32, &window)
-
+		nl.button_png_t(
+			50,
+			50,
+			{"house_button.png", "house_button_2.png", "house_button_3.png"},
+			&window,
+			mouse,
+			1,
+			32,
+			32,
+		)
 
 		nl.draw_borders(&window)
 		rl.EndDrawing()
@@ -111,6 +130,6 @@ main :: proc() {
 
 	rl.CloseWindow()
 
-  // crying 
-  delete(img_cache)
+	// crying 
+	delete(img_cache)
 }

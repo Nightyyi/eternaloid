@@ -49,10 +49,24 @@ get_virtual_x_y_ratio :: proc(x: i32, y: i32, window: ^window_data) -> (i32, i32
 	return virtual_x, virtual_y, virtual_ratio
 }
 
+update_mouse :: proc(mouse: ^mouse_data, window: ^window_data) {
+	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
+	padding_x := (window.present_width - virtual_width) / 2
+	padding_y := (window.present_height - virtual_height) / 2
+	pos := rl.GetMousePosition()
+	mouse.mouse_x = i32(f64(i32(pos[0]) - padding_x) / virtual_ratio)
+	mouse.mouse_y = i32(f64(i32(pos[1]) - padding_y) / virtual_ratio)
+	mouse.virtual_mouse_x = i32(pos[0])
+	mouse.virtual_mouse_y = i32(pos[1])
+  mouse.clicking        = rl.IsMouseButtonPressed(rl.MouseButton.LEFT)
+}
+
 acquire_texture :: proc(image_name: string) -> rl.Texture {
-	image_name_C: cstring = strings.clone_to_cstring(image_name)
+	new_image_name := fmt.tprint("assets\\", image_name, sep = "")
+	image_name_C: cstring = strings.clone_to_cstring(new_image_name)
 	texture: rl.Texture = rl.LoadTexture(image_name_C)
 	delete(image_name_C)
+	free_all(context.temp_allocator)
 	return texture
 }
 
@@ -77,7 +91,17 @@ pull_texture :: proc(
 }
 
 in_hitbox :: proc(x: i32, y: i32, width: i32, height: i32, mouse: mouse_data) -> bool {
-	return (0 < (mouse.virtual_mouse_x - x) < width) && (0 < (mouse.virtual_mouse_y - y) < height)
+	in_box :=
+		(0 < (mouse.mouse_x - x) && (mouse.mouse_x - x) < width) &&
+		(0 < (mouse.mouse_y - y) && (mouse.mouse_y - y) < height)
+	return in_box
+}
+
+in_hitbox_v :: proc(x: i32, y: i32, width: i32, height: i32, mouse: mouse_data) -> bool {
+	in_box :=
+		(0 < (mouse.virtual_mouse_x - x) && (mouse.virtual_mouse_x - x) < width) &&
+		(0 < (mouse.virtual_mouse_y - y) && (mouse.virtual_mouse_y - y) < height)
+  return in_box
 }
 
 draw_rectangle :: proc(
@@ -176,9 +200,15 @@ button_png_d :: proc(
 	window: ^window_data,
 	mouse: mouse_data,
 	size: f32 = 1,
+	width: i32,
+	height: i32,
 ) -> bool {
-  button_clicked := in_hitbox(virtual_x, virtual_y, texture.width, texture.height, mouse) && mouse.clicking
-	texture: rl.Texture = pull_texture(png_name[int(button_clicked)], &window.image_cache_map, size)
+	button_clicked := in_hitbox(x, y, width, height, mouse) && mouse.clicking
+	texture: rl.Texture = pull_texture(
+		png_name[int(button_clicked)],
+		&window.image_cache_map,
+		size,
+	)
 	virtual_x, virtual_y, virtual_ratio := get_virtual_x_y_ratio(x, y, window)
 	rl.DrawTextureEx(
 		texture,
@@ -198,10 +228,25 @@ button_png_t :: proc(
 	window: ^window_data,
 	mouse: mouse_data,
 	size: f32 = 1,
+	width: i32,
+	height: i32,
 ) -> bool {
+	on_button := in_hitbox(x, y, width, height, mouse)
+	button_clicked := on_button && mouse.clicking
+	which_texture: int = 0
+	if (button_clicked == true) {
+		which_texture = 2
+	} 
+  if (on_button == true) {
+		which_texture = 1
+	}
+	fmt.println(which_texture, mouse.mouse_x, mouse.mouse_y, on_button, button_clicked)
 	virtual_x, virtual_y, virtual_ratio := get_virtual_x_y_ratio(x, y, window)
-  on_button := in_hitbox(virtual_x, virtual_y, texture.width, texture.height, mouse)
-  button_clicked := on_button && mouse.clicking
+	texture: rl.Texture = pull_texture(
+		png_name[which_texture],
+		&window.image_cache_map,
+		size,
+	)
 	rl.DrawTextureEx(
 		texture,
 		rl.Vector2{f32(virtual_x), f32(virtual_y)},
