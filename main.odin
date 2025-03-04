@@ -51,16 +51,16 @@ main :: proc() {
 		}
 	}
 
-	Screen_Width :: 800
-	Screen_Height :: 450
+	Screen_Width :: 150
+	Screen_Height :: 120
 
 	rl.InitWindow(Screen_Width, Screen_Height, "ETERNALOID")
 	rl.SetTargetFPS(60)
 	rl.SetWindowState(rl.ConfigFlags{.WINDOW_RESIZABLE})
 	rl.SetWindowState(rl.ConfigFlags{.WINDOW_ALWAYS_RUN})
 
-	textures := [?]rl.Texture{rl.LoadTexture("house_lv1.png")}
 	
+
 	// odinfmt: disable
 	tile_data := [?]i32 {
 		1,1,0,0,0,0,0,0,0,0,
@@ -93,7 +93,10 @@ main :: proc() {
 		clicking        = false,
 	}
 
-	for !rl.WindowShouldClose() {
+  shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
+	defer rl.UnloadShader(shader)
+	rotation_test : f32 = 0;
+  for !rl.WindowShouldClose() {
 
 		if rl.IsWindowResized() {
 			window.present_width = rl.GetScreenWidth()
@@ -109,8 +112,8 @@ main :: proc() {
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
 
-
-		// rl.DrawText("here~", 49, 36, 58, rl.LIGHTGRAY)
+    rl.BeginShaderMode(shader)
+		rl.DrawText("here~", 49, 36, 58, rl.LIGHTGRAY)
 		tile_set := [?]string{"house_lv1.png"}
 		tile_draw(tile_data, tile_set, 10, 10, 50, 50, 32, &window)
 		nl.button_png_t(
@@ -119,11 +122,12 @@ main :: proc() {
 			{"house_button.png", "house_button_2.png", "house_button_3.png"},
 			&window,
 			mouse,
-			1,
 			32,
 			32,
+			rotation_test,
 		)
-
+    rotation_test = rotation_test+1
+    rl.EndShaderMode()
 		nl.draw_borders(&window)
 		rl.EndDrawing()
 	}
