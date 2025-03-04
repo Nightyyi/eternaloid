@@ -1,6 +1,7 @@
 package nlib
 
 import "core:fmt"
+import "core:path/filepath"
 import "core:strings"
 import rl "vendor:raylib"
 
@@ -62,11 +63,11 @@ update_mouse :: proc(mouse: ^mouse_data, window: ^window_data) {
 }
 
 acquire_texture :: proc(image_name: string) -> rl.Texture {
-	new_image_name := fmt.tprint("assets\\", image_name, sep = "")
+	new_image_name := filepath.join([]string{"assets", image_name})
 	image_name_C: cstring = strings.clone_to_cstring(new_image_name)
 	texture: rl.Texture = rl.LoadTexture(image_name_C)
 	delete(image_name_C)
-	free_all(context.temp_allocator)
+	delete(new_image_name)
 	return texture
 }
 
