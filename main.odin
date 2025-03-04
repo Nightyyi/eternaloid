@@ -76,7 +76,7 @@ main :: proc() {
 	}
 	// odinfmt: enable
 
-	img_cache := make(map[nl.image_key]rl.Texture)
+	img_cache := make(map[string]nl.texture_cache)
 	window := nl.window_data {
 		original_width  = Screen_Width,
 		original_height = Screen_Height,
@@ -102,7 +102,7 @@ main :: proc() {
 			window.present_width = rl.GetScreenWidth()
 			window.present_height = rl.GetScreenHeight()
 			delete(img_cache)
-			img_cache = make(map[nl.image_key]rl.Texture)
+			img_cache = make(map[string]nl.texture_cache)
 			window.image_cache_map = img_cache
 
 		}

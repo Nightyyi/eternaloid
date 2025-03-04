@@ -18,7 +18,7 @@ window_data :: struct {
 	original_height: i32,
 	present_width:   i32,
 	present_height:  i32,
-	image_cache_map: map[image_key]rl.Texture,
+	image_cache_map: map[string]texture_cache,
 }
 
 image_key :: struct {
@@ -26,6 +26,10 @@ image_key :: struct {
 	size_key:   f32,
 }
 
+texture_cache :: struct {
+  cached_texture : rl.Texture,
+  size : f32,
+}
 
 get_virtual_window :: proc(window: ^window_data) -> (i32, i32, f64) {
 	width_ratio := f64(window.present_width) / f64(window.original_width)
@@ -73,20 +77,23 @@ acquire_texture :: proc(image_name: string) -> rl.Texture {
 
 pull_texture :: proc(
 	image_name: string,
-	image_cache_map: ^map[image_key]rl.Texture,
+	image_cache_map: ^map[string]texture_cache,
 	size: f32,
 ) -> rl.Texture {
-	cache_key := image_key {
-		string_key = image_name,
-		size_key   = size,
-	}
-	cached_texture, ok := image_cache_map[cache_key]
+	cached_texture, ok := image_cache_map[image_name]
 	if ok {
-		return cached_texture
-
+    if (cached_texture.size == size){
+		return cached_texture.cached_texture
+    } else {
+		texture := acquire_texture(image_name)
+    new_texture_cache := texture_cache{texture,size}
+		image_cache_map[image_name] = new_texture_cache
+		return texture
+    }
 	} else {
 		texture := acquire_texture(image_name)
-		image_cache_map[cache_key] = texture
+    new_texture_cache := texture_cache{texture,size}
+		image_cache_map[image_name] = new_texture_cache
 		return texture
 	}
 }
