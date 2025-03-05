@@ -5,17 +5,17 @@ import "core:path/filepath"
 import "core:strings"
 import rl "vendor:raylib"
 
-Coord2D :: [2]i32
+Coord :: [2]i32
 
 Mouse_Data :: struct {
-	pos:         Coord2D,
-	virtual_pos: Coord2D,
+	pos:         Coord,
+	virtual_pos: Coord,
 	clicking:    bool,
 }
 
 Window_Data :: struct {
-	original_size:   Coord2D,
-	present_size:    Coord2D,
+	original_size:   Coord,
+	present_size:    Coord,
 	image_cache_map: map[string]Texture_Cache,
 }
 
@@ -58,11 +58,11 @@ update_mouse :: proc(mouse: ^Mouse_Data, window: ^Window_Data) {
 	padding_x := (window.present_size.x - virtual_width) / 2
 	padding_y := (window.present_size.y - virtual_height) / 2
 	pos := rl.GetMousePosition()
-	mouse.pos = Coord2D {
+	mouse.pos = Coord {
 		i32(f64(i32(pos.x) - padding_x) / virtual_ratio),
 		i32(f64(i32(pos.y) - padding_y) / virtual_ratio),
 	}
-	mouse.virtual_pos = Coord2D{i32(pos.x), i32(pos.y)}
+	mouse.virtual_pos = Coord{i32(pos.x), i32(pos.y)}
 	mouse.clicking = rl.IsMouseButtonPressed(rl.MouseButton.LEFT)
 }
 

@@ -78,14 +78,14 @@ main :: proc() {
 
 	img_cache := make(map[string]nl.Texture_Cache)
 	window := nl.Window_Data {
-		original_size   = nl.Coord2D{Screen_Width, Screen_Height},
-		present_size    = nl.Coord2D{Screen_Width, Screen_Height},
+		original_size   = nl.Coord{Screen_Width, Screen_Height},
+		Coord    = nl.Coord{Screen_Width, Screen_Height},
 		image_cache_map = img_cache,
 	}
 
 	mouse := nl.Mouse_Data {
-		pos         = nl.Coord2D{0, 0},
-		virtual_pos = nl.Coord2D{0, 0},
+		pos         = nl.Coord{0, 0},
+		Coord = nl.Coord{0, 0},
 		clicking    = false,
 	}
 
@@ -95,7 +95,7 @@ main :: proc() {
 	for !rl.WindowShouldClose() {
 
 		if rl.IsWindowResized() {
-			window.present_size = nl.Coord2D{rl.GetScreenWidth(), rl.GetScreenHeight()}
+			window.present_size = nl.Coord{rl.GetScreenWidth(), rl.GetScreenHeight()}
 			// delete(img_cache)
 			// img_cache = make(map[string]nl.Texture_Cache)
 			// window.image_cache_map = img_cache
