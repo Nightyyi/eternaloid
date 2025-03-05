@@ -78,19 +78,15 @@ main :: proc() {
 
 	img_cache := make(map[string]nl.Texture_Cache)
 	window := nl.Window_Data {
-		original_width  = Screen_Width,
-		original_height = Screen_Height,
-		present_width   = Screen_Width,
-		present_height  = Screen_Height,
+		original_size   = nl.Coord2D{Screen_Width, Screen_Height},
+		present_size    = nl.Coord2D{Screen_Width, Screen_Height},
 		image_cache_map = img_cache,
 	}
 
 	mouse := nl.Mouse_Data {
-		mouse_x         = 0,
-		mouse_y         = 0,
-		virtual_mouse_x = 0,
-		virtual_mouse_y = 0,
-		clicking        = false,
+		pos         = nl.Coord2D{0, 0},
+		virtual_pos = nl.Coord2D{0, 0},
+		clicking    = false,
 	}
 
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
@@ -99,11 +95,10 @@ main :: proc() {
 	for !rl.WindowShouldClose() {
 
 		if rl.IsWindowResized() {
-			window.present_width = rl.GetScreenWidth()
-			window.present_height = rl.GetScreenHeight()
-			delete(img_cache)
-			img_cache = make(map[string]nl.Texture_Cache)
-			window.image_cache_map = img_cache
+			window.present_size = nl.Coord2D{rl.GetScreenWidth(), rl.GetScreenHeight()}
+			// delete(img_cache)
+			// img_cache = make(map[string]nl.Texture_Cache)
+			// window.image_cache_map = img_cache
 
 		}
 

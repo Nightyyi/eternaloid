@@ -5,19 +5,17 @@ import "core:path/filepath"
 import "core:strings"
 import rl "vendor:raylib"
 
+Coord2D :: [2]i32
+
 Mouse_Data :: struct {
-	mouse_x:         i32,
-	mouse_y:         i32,
-	virtual_mouse_x: i32,
-	virtual_mouse_y: i32,
-	clicking:        bool,
+	pos:         Coord2D,
+	virtual_pos: Coord2D,
+	clicking:    bool,
 }
 
 Window_Data :: struct {
-	original_width:  i32,
-	original_height: i32,
-	present_width:   i32,
-	present_height:  i32,
+	original_size:   Coord2D,
+	present_size:    Coord2D,
 	image_cache_map: map[string]Texture_Cache,
 }
 
@@ -31,23 +29,24 @@ Texture_Cache :: struct {
 	size:           f32,
 }
 
+
 get_virtual_window :: proc(window: ^Window_Data) -> (i32, i32, f64) {
-	width_ratio := f64(window.present_width) / f64(window.original_width)
-	height_ratio := f64(window.present_height) / f64(window.original_height)
+	width_ratio := f64(window.present_size.x) / f64(window.original_size.x)
+	height_ratio := f64(window.present_size.y) / f64(window.original_size.y)
 
 	ratio: f64
 	ratio = min(height_ratio, width_ratio)
 
-	v_width := i32(f64(window.original_width) * ratio)
-	v_height := i32(f64(window.original_height) * ratio)
+	v_width := i32(f64(window.original_size.x) * ratio)
+	v_height := i32(f64(window.original_size.y) * ratio)
 
 	return v_width, v_height, ratio
 }
 
 get_virtual_x_y_ratio :: proc(x: i32, y: i32, window: ^Window_Data) -> (i32, i32, f64) {
 	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
-	padding_x := (window.present_width - virtual_width) / 2
-	padding_y := (window.present_height - virtual_height) / 2
+	padding_x := (window.present_size.x - virtual_width) / 2
+	padding_y := (window.present_size.y - virtual_height) / 2
 	virtual_x := i32(f64(x) * virtual_ratio) + padding_x
 	virtual_y := i32(f64(y) * virtual_ratio) + padding_y
 
@@ -56,13 +55,14 @@ get_virtual_x_y_ratio :: proc(x: i32, y: i32, window: ^Window_Data) -> (i32, i32
 
 update_mouse :: proc(mouse: ^Mouse_Data, window: ^Window_Data) {
 	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
-	padding_x := (window.present_width - virtual_width) / 2
-	padding_y := (window.present_height - virtual_height) / 2
+	padding_x := (window.present_size.x - virtual_width) / 2
+	padding_y := (window.present_size.y - virtual_height) / 2
 	pos := rl.GetMousePosition()
-	mouse.mouse_x = i32(f64(i32(pos.x) - padding_x) / virtual_ratio)
-	mouse.mouse_y = i32(f64(i32(pos.y) - padding_y) / virtual_ratio)
-	mouse.virtual_mouse_x = i32(pos.x)
-	mouse.virtual_mouse_y = i32(pos.y)
+	mouse.pos = Coord2D {
+		i32(f64(i32(pos.x) - padding_x) / virtual_ratio),
+		i32(f64(i32(pos.y) - padding_y) / virtual_ratio),
+	}
+	mouse.virtual_pos = Coord2D{i32(pos.x), i32(pos.y)}
 	mouse.clicking = rl.IsMouseButtonPressed(rl.MouseButton.LEFT)
 }
 
@@ -99,13 +99,17 @@ pull_texture :: proc(
 }
 
 in_hitbox :: proc(x: i32, y: i32, width: i32, height: i32, mouse: Mouse_Data) -> bool {
-	return (0 < (mouse.mouse_x - x) && (mouse.mouse_x - x) < width) &&
-		(0 < (mouse.mouse_y - y) && (mouse.mouse_y - y) < height)
+	return(
+		(0 < (mouse.pos.x - x) && (mouse.pos.x - x) < width) &&
+		(0 < (mouse.pos.y - y) && (mouse.pos.y - y) < height) \
+	)
 }
 
 in_hitbox_v :: proc(x: i32, y: i32, width: i32, height: i32, mouse: Mouse_Data) -> bool {
-	return (0 < (mouse.virtual_mouse_x - x) && (mouse.virtual_mouse_x - x) < width) &&
-		(0 < (mouse.virtual_mouse_y - y) && (mouse.virtual_mouse_y - y) < height)
+	return(
+		(0 < (mouse.virtual_pos.x - x) && (mouse.virtual_pos.x - x) < width) &&
+		(0 < (mouse.virtual_pos.y - y) && (mouse.virtual_pos.y - y) < height) \
+	)
 }
 
 draw_rectangle :: proc(
@@ -129,35 +133,35 @@ draw_rectangle :: proc(
 
 draw_borders :: proc(window: ^Window_Data) {
 	virtual_width, virtual_height, virtual_ratio := get_virtual_window(window)
-	padding_x := (window.present_width - virtual_width) / 2
-	padding_y := (window.present_height - virtual_height) / 2
+	padding_x := (window.present_size.x - virtual_width) / 2
+	padding_y := (window.present_size.y - virtual_height) / 2
 	rl.DrawRectangle(
-		i32(0),
-		i32(0),
-		i32(padding_x),
-		i32(window.present_height),
-		rl.Color{0, 0, 0, 255},
+		posX = i32(0),
+		posY = i32(0),
+		width = i32(padding_x),
+		height = i32(window.present_size.y),
+		color = rl.Color{0, 0, 0, 255},
 	)
 	rl.DrawRectangle(
-		i32(padding_x + virtual_width),
-		i32(0),
-		i32(padding_x),
-		i32(window.present_height),
-		rl.Color{0, 0, 0, 255},
+		posX = i32(padding_x + virtual_width),
+		posY = i32(0),
+		width = i32(padding_x),
+		height = i32(window.present_size.y),
+		color = rl.Color{0, 0, 0, 255},
 	)
 	rl.DrawRectangle(
-		i32(0),
-		i32(0),
-		i32(window.present_width),
-		i32(padding_y),
-		rl.Color{0, 0, 0, 255},
+		posX = i32(0),
+		posY = i32(0),
+		width = i32(window.present_size.x),
+		height = i32(padding_y),
+		color = rl.Color{0, 0, 0, 255},
 	)
 	rl.DrawRectangle(
-		i32(0),
-		i32(padding_y + virtual_height),
-		i32(window.present_width),
-		i32(padding_y),
-		rl.Color{0, 0, 0, 255},
+		posX = i32(0),
+		posY = i32(padding_y + virtual_height),
+		width = i32(window.present_size.x),
+		height = i32(padding_y),
+		color = rl.Color{0, 0, 0, 255},
 	)
 
 
@@ -248,8 +252,8 @@ button_png_t :: proc(
 	on_button := in_hitbox(x, y, width, height, mouse)
 	button_clicked := on_button && mouse.clicking
 	which_texture: int = 0
-	if button_clicked { which_texture = 2 }
-	if on_button {      which_texture = 1      }
+	if button_clicked {which_texture = 2}
+	if on_button {which_texture = 1}
 	virtual_x, virtual_y, virtual_ratio := get_virtual_x_y_ratio(x, y, window)
 	texture: rl.Texture = pull_texture(png_name[which_texture], &window.image_cache_map, size)
 	rl.DrawTextureEx(
