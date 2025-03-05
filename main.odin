@@ -16,7 +16,7 @@ tile_draw :: proc(
 	x_offset: i32,
 	y_offset: i32,
 	tilesize: i32,
-	window: ^nl.window_data,
+	window: ^nl.Window_Data,
 ) {
 	pos := 0
 	for y in 0 ..< y_max {
@@ -76,8 +76,8 @@ main :: proc() {
 	}
 	// odinfmt: enable
 
-	img_cache := make(map[string]nl.texture_cache)
-	window := nl.window_data {
+	img_cache := make(map[string]nl.Texture_Cache)
+	window := nl.Window_Data {
 		original_width  = Screen_Width,
 		original_height = Screen_Height,
 		present_width   = Screen_Width,
@@ -85,7 +85,7 @@ main :: proc() {
 		image_cache_map = img_cache,
 	}
 
-	mouse := nl.mouse_data {
+	mouse := nl.Mouse_Data {
 		mouse_x         = 0,
 		mouse_y         = 0,
 		virtual_mouse_x = 0,
@@ -102,7 +102,7 @@ main :: proc() {
 			window.present_width = rl.GetScreenWidth()
 			window.present_height = rl.GetScreenHeight()
 			delete(img_cache)
-			img_cache = make(map[string]nl.texture_cache)
+			img_cache = make(map[string]nl.Texture_Cache)
 			window.image_cache_map = img_cache
 
 		}
@@ -126,7 +126,7 @@ main :: proc() {
 			32,
 			rotation_test,
 		)
-		rotation_test = rotation_test + 1
+		rotation_test = rotation_test + 0.001
 		rl.EndShaderMode()
 		nl.draw_borders(&window)
 		rl.EndDrawing()
