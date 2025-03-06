@@ -24,7 +24,12 @@ tile_draw :: proc(
 		for x in 0 ..< x_max {
 			if (tile_data[pos] > 0) {
 				tile_type := texture_names[tile_data[pos] - 1]
-				nl.draw_png(x * tilesize + x_offset, y * tilesize + y_offset, tile_type, window, 1)
+				nl.draw_png(
+					nl.Coord{x * tilesize + x_offset, y * tilesize + y_offset},
+					tile_type,
+					window,
+					2,
+				)
 			}
 			pos = pos + 1
 		}
@@ -51,8 +56,8 @@ main :: proc() {
 		}
 	}
 
-	Screen_Width :: 150
-	Screen_Height :: 120
+	Screen_Width :: 900
+	Screen_Height :: 400
 
 	rl.InitWindow(Screen_Width, Screen_Height, "ETERNALOID")
 	rl.SetTargetFPS(60)
@@ -65,12 +70,12 @@ main :: proc() {
 	tile_data := [?]i32 {
 		1,1,0,0,0,0,0,0,0,0,
 		0,1,0,0,0,0,0,0,0,0,
+		0,0,1,2,3,4,0,0,0,0,
 		0,0,0,0,0,0,0,0,0,0,
 		0,0,0,0,0,0,0,0,0,0,
 		0,0,0,0,0,0,0,0,0,0,
 		0,0,0,0,0,0,0,0,0,0,
-		0,0,0,0,0,0,0,0,0,0,
-		0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,1,0,0,0,0,0,
 		0,0,0,0,0,0,0,0,1,0,
 		0,0,0,0,0,0,0,0,0,0
 	}
@@ -79,19 +84,18 @@ main :: proc() {
 	img_cache := make(map[string]nl.Texture_Cache)
 	window := nl.Window_Data {
 		original_size   = nl.Coord{Screen_Width, Screen_Height},
-		Coord    = nl.Coord{Screen_Width, Screen_Height},
+		present_size    = nl.Coord{Screen_Width, Screen_Height},
 		image_cache_map = img_cache,
 	}
 
 	mouse := nl.Mouse_Data {
 		pos         = nl.Coord{0, 0},
-		Coord = nl.Coord{0, 0},
+		virtual_pos = nl.Coord{0, 0},
 		clicking    = false,
 	}
 
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
 	defer rl.UnloadShader(shader)
-	rotation_test: f32 = 0
 	for !rl.WindowShouldClose() {
 
 		if rl.IsWindowResized() {
@@ -101,29 +105,24 @@ main :: proc() {
 			// window.image_cache_map = img_cache
 
 		}
-
-		nl.update_mouse(&mouse, &window)
-
+		nl.update_mouse(&mouse, window)
 		rl.BeginDrawing()
+
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
 
 		rl.BeginShaderMode(shader)
 		rl.DrawText("here~", 49, 36, 58, rl.LIGHTGRAY)
-		tile_set := [?]string{"house_lv1.png"}
-		tile_draw(tile_data, tile_set, 10, 10, 50, 50, 32, &window)
+		tile_set := [?]string{"house_lv0.png", "house_lv1.png", "house_lv2.png", "house_lv3.png"}
 		nl.button_png_t(
-			50,
-			50,
+			nl.Coord{50, 50},
+			nl.Coord{32, 32},
 			{"house_button.png", "house_button_2.png", "house_button_3.png"},
 			&window,
 			mouse,
-			32,
-			32,
-			rotation_test,
 		)
-		rotation_test = rotation_test + 0.001
+		tile_draw(tile_data, tile_set, 10, 10, 50, 50, 32, &window)
 		rl.EndShaderMode()
-		nl.draw_borders(&window)
+		// nl.draw_borders(&window)  no longer used, for now.
 		rl.EndDrawing()
 	}
 
