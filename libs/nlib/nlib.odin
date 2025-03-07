@@ -7,6 +7,7 @@ import rl "vendor:raylib"
 
 Coord :: [2]i32
 
+
 Mouse_Data :: struct {
 	pos:         Coord,
 	virtual_pos: Coord,
@@ -106,11 +107,11 @@ pull_texture :: proc(
 	}
 }
 
-in_hitbox :: proc(hitbox_pos: Coord, wh: Coord, mouse: Mouse_Data) -> bool {
-	return(
-		(0 < (mouse.pos.x - hitbox_pos.x) && (mouse.pos.x - hitbox_pos.x) < wh.x) &&
-		(0 < (mouse.pos.y - hitbox_pos.y) && (mouse.pos.y - hitbox_pos.y) < wh.y) \
-	)
+in_hitbox :: proc(pos: Coord, size: Coord, mouse: Mouse_Data) -> bool {
+  delta := mouse.pos - pos
+	return (0 < delta.x && delta.x < size.x) && (0 < delta.y && delta.y < size.y)
+		      
+  
 }
 
 in_hitbox_v :: proc(x: i32, y: i32, width: i32, height: i32, mouse: Mouse_Data) -> bool {
@@ -138,6 +139,7 @@ draw_png :: proc(
 	window: ^Window_Data,
 	size: f32 = 1,
 	rotation: f32 = 0,
+	color: rl.Color = rl.Color{255, 255, 255, 255},
 ) {
 	texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
 	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)
@@ -146,7 +148,7 @@ draw_png :: proc(
 		rl.Vector2{f32(virtual_pos.x), f32(virtual_pos.y)},
 		rotation,
 		size * f32(virtual_ratio),
-		rl.Color{255, 255, 255, 255},
+		color,
 	)
 }
 
@@ -160,13 +162,12 @@ button_png_t :: proc(
 	size: f32 = 1,
 ) -> bool {
 
-	on_button := in_hitbox(hitbox, position, mouse)
-
+	on_button := in_hitbox(position, hitbox, mouse)
 	button_clicked := on_button && mouse.clicking
 	which_texture: int = 0
 
-	if button_clicked {which_texture = 2}
 	if on_button {which_texture = 1}
+	if button_clicked {which_texture = 2}
 
 	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)
 	texture: rl.Texture = pull_texture(png_name[which_texture], &window.image_cache_map, size)
@@ -180,4 +181,14 @@ button_png_t :: proc(
 	)
 
 	return button_clicked
+}
+
+begin_draw_area :: proc(pos: Coord, size: Coord, window: Window_Data) {
+	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(pos, window)
+	rl.BeginScissorMode(
+		virtual_pos.x,
+		virtual_pos.y,
+		i32(f64(size.y) * virtual_ratio),
+		i32(f64(size.y) * virtual_ratio),
+	)
 }
