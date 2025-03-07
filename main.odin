@@ -3,7 +3,9 @@ package rlib
 import nl "libs/nlib"
 import rl "vendor:raylib"
 
+import "core:path/filepath"
 import "core:encoding/json"
+import "core:strings"
 import "core:fmt"
 import "core:mem"
 
@@ -47,6 +49,15 @@ tile_draw :: proc(
 	}
 }
 
+// yes i do want a seperate function for this
+set_icon :: proc(){
+	icon_filepath := filepath.join([]string{"assets", "ball.png"})
+	icon_filepath_c: cstring = strings.clone_to_cstring(icon_filepath)
+  rl.SetWindowIcon(rl.LoadImage(icon_filepath_c))
+  delete(icon_filepath)
+  delete(icon_filepath_c)
+}
+
 process_inputs :: proc(game: ^Game_State) {
 	if (game.tab_state == 0) {
 		if rl.IsKeyPressed(rl.KeyboardKey.A) {game.tab_1.camera.x -= 16}
@@ -85,7 +96,8 @@ main :: proc() {
 	rl.SetTargetFPS(60)
 	rl.SetWindowState(rl.ConfigFlags{.WINDOW_RESIZABLE})
 	// rl.SetWindowState(rl.ConfigFlags{.WINDOW_ALWAYS_RUN})
-	
+  set_icon()
+
 	// odinfmt: disable
 	tile_data := [?]i32 {
 		1,1,0,0,0,0,0,0,0,0,
@@ -101,7 +113,7 @@ main :: proc() {
 	}
 	// odinfmt: enable
 
-	img_cache := make(map[string]nl.Texture_Cache)
+	img_cache := make(map[string]rl.Texture)
 	window := nl.Window_Data {
 		original_size   = nl.Coord{Screen_Width, Screen_Height},
 		present_size    = nl.Coord{Screen_Width, Screen_Height},

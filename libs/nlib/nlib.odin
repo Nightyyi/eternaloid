@@ -17,7 +17,7 @@ Mouse_Data :: struct {
 Window_Data :: struct {
 	original_size:   Coord,
 	present_size:    Coord,
-	image_cache_map: map[string]Texture_Cache,
+	image_cache_map: map[string]rl.Texture,
 }
 
 Image_Key :: struct {
@@ -86,23 +86,15 @@ acquire_texture :: proc(image_name: string) -> rl.Texture {
 
 pull_texture :: proc(
 	image_name: string,
-	image_cache_map: ^map[string]Texture_Cache,
+	image_cache_map: ^map[string]rl.Texture,
 	size: f32,
 ) -> rl.Texture {
 	cached_texture, ok := image_cache_map[image_name]
 	if ok {
-		if (cached_texture.size == size) {
-			return cached_texture.cached_texture
-		} else {
-			texture := acquire_texture(image_name)
-			new_texture_cache := Texture_Cache{texture, size}
-			image_cache_map[image_name] = new_texture_cache
-			return texture
-		}
+		return cached_texture
 	} else {
 		texture := acquire_texture(image_name)
-		new_texture_cache := Texture_Cache{texture, size}
-		image_cache_map[image_name] = new_texture_cache
+		image_cache_map[image_name] = texture
 		return texture
 	}
 }
