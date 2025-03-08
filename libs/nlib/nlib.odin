@@ -18,6 +18,7 @@ Window_Data :: struct {
 	original_size:   Coord,
 	present_size:    Coord,
 	image_cache_map: map[string]rl.Texture,
+  font: rl.Font,
 }
 
 Image_Key :: struct {
@@ -100,10 +101,10 @@ pull_texture :: proc(
 }
 
 in_hitbox :: proc(pos: Coord, size: Coord, mouse: Mouse_Data) -> bool {
-  delta := mouse.pos - pos
+	delta := mouse.pos - pos
 	return (0 < delta.x && delta.x < size.x) && (0 < delta.y && delta.y < size.y)
-		      
-  
+
+
 }
 
 in_hitbox_v :: proc(x: i32, y: i32, width: i32, height: i32, mouse: Mouse_Data) -> bool {
@@ -111,6 +112,27 @@ in_hitbox_v :: proc(x: i32, y: i32, width: i32, height: i32, mouse: Mouse_Data) 
 		(0 < (mouse.virtual_pos.x - x) && (mouse.virtual_pos.x - x) < width) &&
 		(0 < (mouse.virtual_pos.y - y) && (mouse.virtual_pos.y - y) < height) \
 	)
+}
+
+draw_text :: proc(
+  text: string,
+	position: Coord,
+	spacing: f32,
+	color: rl.Color,
+	fontSize: f32,
+	window: Window_Data,
+) {
+	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window)
+	text_c: cstring = strings.clone_to_cstring(text)
+	rl.DrawTextEx(
+		font = window.font,
+		text = text_c,
+		position = rl.Vector2{f32(virtual_pos.x), f32(virtual_pos.y)},
+		fontSize = fontSize*f32(virtual_ratio),
+		spacing = spacing*f32(virtual_ratio),
+		tint = color,
+	)
+  delete(text_c)
 }
 
 draw_rectangle :: proc(position: Coord, size: Coord, window: Window_Data, color: rl.Color) {
@@ -133,15 +155,17 @@ draw_png :: proc(
 	rotation: f32 = 0,
 	color: rl.Color = rl.Color{255, 255, 255, 255},
 ) {
-	texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
-	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)
-	rl.DrawTextureEx(
-		texture,
-		rl.Vector2{f32(virtual_pos.x), f32(virtual_pos.y)},
-		rotation,
-		size * f32(virtual_ratio),
-		color,
-	)
+	if (png_name != "") {
+		texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
+		virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)
+		rl.DrawTextureEx(
+			texture,
+			rl.Vector2{f32(virtual_pos.x), f32(virtual_pos.y)},
+			rotation,
+			size * f32(virtual_ratio),
+			color,
+		)
+	}
 }
 
 button_png_t :: proc(
@@ -180,7 +204,7 @@ begin_draw_area :: proc(pos: Coord, size: Coord, window: Window_Data) {
 	rl.BeginScissorMode(
 		virtual_pos.x,
 		virtual_pos.y,
-		i32(f64(size.y) * virtual_ratio),
+		i32(f64(size.x) * virtual_ratio),
 		i32(f64(size.y) * virtual_ratio),
 	)
 }
