@@ -47,8 +47,8 @@ tile_draw :: proc(
 			if (nl.Coord{x, y} == highlight) {
 				nl.draw_rectangle(
 					position = nl.Coord {
-						i32(f64(x * tilesize + offset.x) * size),
-						i32(f64(y * tilesize + offset.y) * size),
+						i32(f64(x * tilesize) * size) + offset.x,
+						i32(f64(y * tilesize) * size) + offset.y,
 					},
 					size = nl.Coord{i32(32 * size), i32(32 * size)},
 					window = window^,
@@ -58,8 +58,8 @@ tile_draw :: proc(
 			}
 			nl.draw_png(
 				position = nl.Coord {
-					i32(f64(x * tilesize + offset.x) * size),
-					i32(f64(y * tilesize + offset.y) * size),
+						i32(f64(x * tilesize) * size) + offset.x,
+						i32(f64(y * tilesize) * size) + offset.y,
 				},
 				png_name = textures[tile_data[y * max.x + x]],
 				window = window,
@@ -147,16 +147,16 @@ town_tab :: proc(
 	zoom_ts := (32 * game.tab_1.camera_zoom)
 	offset_tiles := nl.Coord{295, 0} + game.tab_1.camera
 	delta := (mouse.pos - offset_tiles)
-	on_tile_pos := nl.Coord {
-		i32(f64(delta.x) / zoom_ts),
-		i32(f64(delta.y) / zoom_ts),
-	}
+	on_tile_pos := nl.Coord{i32(f64(delta.x) / zoom_ts), i32(f64(delta.y) / zoom_ts)}
 
 	sum_velocity :=
 		game.tab_1.camera_vel.x * game.tab_1.camera_vel.x +
 		game.tab_1.camera_vel.y * game.tab_1.camera_vel.y
 	if (sum_velocity > 1) {
-		game.tab_1.camera += game.tab_1.camera_vel
+		game.tab_1.camera += nl.Coord {
+			i32(f64(game.tab_1.camera_vel.x) * game.tab_1.camera_zoom),
+			i32(f64(game.tab_1.camera_vel.y) * game.tab_1.camera_zoom),
+		}
 		if !game.slide {
 			game.tab_1.camera_vel.x = i32(f64(game.tab_1.camera_vel.x) * 0.999)
 			game.tab_1.camera_vel.y = i32(f64(game.tab_1.camera_vel.y) * 0.999)
