@@ -38,12 +38,24 @@ tile_draw :: proc(
 	tilesize: i32,
 	window: ^nl.Window_Data,
 	size: f64 = 1,
+	highlight: nl.Coord,
 ) {
 
 	pos := 0
 	for y in 0 ..< max.y {
 		for x in 0 ..< max.x {
+			if (nl.Coord{x, y} == highlight) {
+				nl.draw_rectangle(
+					position = nl.Coord {
+						i32(f64(x * tilesize + offset.x) * size),
+						i32(f64(y * tilesize + offset.y) * size),
+					},
+					size = nl.Coord{i32(32 * size), i32(32 * size)},
+					window = window^,
+					color = rl.Color{150, 150, 150, 255},
+				)
 
+			}
 			nl.draw_png(
 				position = nl.Coord {
 					i32(f64(x * tilesize + offset.x) * size),
@@ -132,10 +144,13 @@ town_tab :: proc(
 		"house_lv2.png",
 		"house_lv3.png",
 	}
+	zoom_ts := (32 * game.tab_1.camera_zoom)
 	offset_tiles := nl.Coord{295, 0} + game.tab_1.camera
-	on_tile_pos :=
-		(mouse.pos - offset_tiles) /
-		nl.Coord{i32(32 * game.tab_1.camera_zoom), i32(32 * game.tab_1.camera_zoom)}
+	delta := (mouse.pos - offset_tiles)
+	on_tile_pos := nl.Coord {
+		i32(f64(delta.x) / zoom_ts),
+		i32(f64(delta.y) / zoom_ts),
+	}
 
 	sum_velocity :=
 		game.tab_1.camera_vel.x * game.tab_1.camera_vel.x +
@@ -156,20 +171,6 @@ town_tab :: proc(
 		if on_tile_pos.y >= 0 {
 			if on_tile_pos.x < 100 {
 				if on_tile_pos.y < 100 {
-					zoom_ts := 32 * game.tab_1.camera_zoom
-					nl.draw_rectangle(
-						position = nl.Coord {
-							i32(f64(on_tile_pos.x)*zoom_ts)+ offset_tiles.x,
-							i32(f64(on_tile_pos.y)*zoom_ts)+ offset_tiles.y
-							
-						},
-						size = nl.Coord {
-							i32(32 * game.tab_1.camera_zoom),
-							i32(32 * game.tab_1.camera_zoom),
-						},
-						window = window^,
-						color = rl.Color{90, 90, 90, 255},
-					)
 					valid_tile = true
 				}}}}
 
@@ -182,6 +183,7 @@ town_tab :: proc(
 		tilesize = 32,
 		window = window,
 		size = game.tab_1.camera_zoom,
+		highlight = on_tile_pos,
 	)
 	rl.EndShaderMode()
 	rl.EndScissorMode()
@@ -241,17 +243,22 @@ side_bar_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_
 
 process_inputs :: proc(game: ^Game_State) {
 	if (game.tab_state == 1) {
-
+		// odinfmt: disable
 		if rl.IsKeyDown(
 			rl.KeyboardKey.A,
 		) {game.tab_1.camera_vel.x += 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.D) {game.tab_1.camera_vel.x -= 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.W) {game.tab_1.camera_vel.y += 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.S) {game.tab_1.camera_vel.y -= 1;game.slide = true} else {game.slide = false}
+		// odinfmt: disable
 
 
-		if rl.IsKeyDown(rl.KeyboardKey.UP) {
-			game.tab_1.camera_zoom *= 1.1
+		if rl.IsKeyPressed(rl.KeyboardKey.UP) {
+			game.tab_1.camera_zoom *= 2
+			game.tab_1.camera.x /= 2
+			game.tab_1.camera.y /= 2
 		}
-		if rl.IsKeyDown(rl.KeyboardKey.DOWN) {
-			game.tab_1.camera_zoom /= 1.1
+		if rl.IsKeyPressed(rl.KeyboardKey.DOWN) {
+			game.tab_1.camera_zoom /= 2
+			game.tab_1.camera.x *= 2
+			game.tab_1.camera.y *= 2
 		}
 	}
 }
