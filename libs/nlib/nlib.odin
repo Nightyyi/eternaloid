@@ -161,9 +161,25 @@ draw_slider :: proc(
 	rl.DrawRectangle(
 		i32(virtual_pos.x),
 		i32(virtual_pos.y),
+		i32(f64(size.x) * virtual_ratio),
+		i32(f64(size.y) * virtual_ratio),
+		rl.Color{50,50,50,105},
+  )
+	rl.DrawRectangle(
+		i32(virtual_pos.x),
+		i32(virtual_pos.y),
 		i32(f64(size.x) * virtual_ratio * slider_percentage^),
 		i32(f64(size.y) * virtual_ratio),
 		color,
+  )
+	rl.DrawRectangleLinesEx(
+    rl.Rectangle{
+    f32(virtual_pos.x),
+		f32(virtual_pos.y),
+		f32(f64(size.x) * virtual_ratio),
+		f32(f64(size.y) * virtual_ratio)},
+    2,
+		rl.Color{255,255,255,105},
   )
 }
 

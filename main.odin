@@ -22,15 +22,75 @@ Global_Data :: struct {
 }
 
 Game_Tab_1 :: struct {
-	camera:      nl.Coord,
-	camera_vel:  nl.Coord,
-	camera_zoom: f64,
-	hold:        string,
-	hold_t:      i32,
-	tile_data:   []i32,
+	camera:            nl.Coord,
+	camera_vel:        nl.Coord,
+	camera_zoom:       f64,
+	camera_zoom_speed: f64,
+	hold:              string,
+	hold_t:            i32,
+	tile_data:         []i32,
+	map_mesh:          rg.mesh,
+	dev_see:           bool,
 }
 
 
+// settings tab
+
+settings_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_State) {
+	nl.draw_text(
+		text = "Zoom Speed",
+		position = nl.Coord{150, 35},
+		spacing = 3,
+		color = rl.Color{255, 255, 255, 255},
+		fontSize = 16,
+		window = window^,
+	)
+
+	nl.draw_slider(
+		position = nl.Coord{150, 50},
+		size = nl.Coord{130, 15},
+		window = window^,
+		mouse = mouse,
+		slider_percentage = &game.tab_1.camera_zoom_speed,
+		color = rl.Color{150, 150, 150, 255},
+	)
+}
+
+// all town tab stuff
+tile_color_draw :: proc(
+	tile_data: $T,
+	max: nl.Coord,
+	offset: nl.Coord,
+	tilesize: i32,
+	window: ^nl.Window_Data,
+	size: f64 = 1,
+	color: [3]i32,
+) {
+
+	pos := 0
+	for y in 0 ..< max.y {
+		for x in 0 ..< max.x {
+			val := tile_data[x + y * max.x]
+			nl.draw_rectangle(
+				position = nl.Coord {
+					i32(f64(x * tilesize) * size) + offset.x,
+					i32(f64(y * tilesize) * size) + offset.y,
+				},
+				size = nl.Coord{i32(32 * size)+2, i32(32 * size)+2},
+				window = window^,
+				color = rl.Color {
+					u8(f64(color.r) * val),
+					u8(f64(color.g) * val),
+					u8(f64(color.b) * val),
+					255,
+				},
+			)
+
+		}
+	}
+}
+
+// all town tab stuff
 tile_draw :: proc(
 	tile_data: $T,
 	textures: [$P]string,
@@ -174,20 +234,31 @@ town_tab :: proc(
 				if on_tile_pos.y < 100 {
 					valid_tile = true
 				}}}}
-
-	rl.BeginShaderMode(shader)
-	tile_draw(
-		tile_data = game.tab_1.tile_data,
-		textures = tile_set,
+	tile_color_draw(
+		tile_data = game.tab_1.map_mesh.array,
 		max = nl.Coord{100, 100},
 		offset = offset_tiles,
 		tilesize = 32,
 		window = window,
 		size = game.tab_1.camera_zoom,
-		highlight = on_tile_pos,
+		color = {33, 31, 50},
 	)
-	rl.EndShaderMode()
-	rl.EndScissorMode()
+	if !game.tab_1.dev_see {
+		rl.BeginShaderMode(shader)
+
+		tile_draw(
+			tile_data = game.tab_1.tile_data,
+			textures = tile_set,
+			max = nl.Coord{100, 100},
+			offset = offset_tiles,
+			tilesize = 32,
+			window = window,
+			size = game.tab_1.camera_zoom,
+			highlight = on_tile_pos,
+		)
+		rl.EndShaderMode()
+	}
+  rl.EndScissorMode()
 	nl.draw_png(position = mouse.pos, png_name = game.tab_1.hold, window = window, size = 2)
 
 	if (valid_tile) {set_town(game, on_tile_pos, mouse)}
@@ -241,7 +312,12 @@ side_bar_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_
 }
 
 process_inputs :: proc(game: ^Game_State) {
-	if (game.tab_state == 1) {
+	if (game.tab_state == 0) {
+    if rl.IsKeyPressed((rl.KeyboardKey.M)){ 
+      game.tab_1.dev_see = game.tab_1.dev_see != true
+      fmt.println("dev seek: map")
+    }
+	} else if (game.tab_state == 1) {
 			// odinfmt: disable
 		if rl.IsKeyDown(
 			rl.KeyboardKey.A,
@@ -251,12 +327,12 @@ process_inputs :: proc(game: ^Game_State) {
     {game.tab_1.camera_vel.y += 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.S) 
     {game.tab_1.camera_vel.y -= 1;game.slide = true} else {game.slide = false}
 		// odinfmt: enable
-    resize := f64(rl.GetMouseWheelMove())
-    if (resize < 0) {
-      game.tab_1.camera_zoom *= resize*0.05+1
-    } else {
-      game.tab_1.camera_zoom /= resize*-0.05+1
-    }
+		resize := f64(rl.GetMouseWheelMove())
+		if (resize < 0) {
+			game.tab_1.camera_zoom *= resize * 0.05 * game.tab_1.camera_zoom_speed * 3 + 1
+		} else {
+			game.tab_1.camera_zoom /= resize * -0.05 * game.tab_1.camera_zoom_speed * 3 + 1
+		}
 
 	}
 }
@@ -301,7 +377,13 @@ main :: proc() {
 	game := Game_State {
 		global = Global_Data{oid = 1},
 		tab_state = 1,
-		tab_1 = Game_Tab_1{hold = "", tile_data = tile_data_NO_USE[:], camera_zoom = 1},
+		tab_1 = Game_Tab_1 {
+			hold = "",
+			tile_data = tile_data_NO_USE[:],
+			map_mesh = rg.create_mesh_custom({100, 100}, 40, 2151232),
+			camera_zoom = 1,
+			camera_zoom_speed = 0.3,
+		},
 	}
 
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
@@ -323,13 +405,15 @@ main :: proc() {
 
 
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
-
-		if (game.tab_state == 1) {
+		if (game.tab_state == 0) {
+			settings_tab(window = &window, mouse = mouse, game = &game)
+		} else if (game.tab_state == 1) {
 			town_tab(game = &game, window = &window, mouse = mouse, shader = shader)
 		}
 		rl.EndDrawing()
 	}
 
 	delete(window.image_cache_map)
+	delete(game.tab_1.map_mesh.array)
 
 }
