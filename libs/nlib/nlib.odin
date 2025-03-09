@@ -7,7 +7,6 @@ import rl "vendor:raylib"
 
 Coord :: [2]i32
 
-
 Mouse_Data :: struct {
 	pos:         Coord,
 	virtual_pos: Coord,
@@ -18,7 +17,7 @@ Window_Data :: struct {
 	original_size:   Coord,
 	present_size:    Coord,
 	image_cache_map: map[string]rl.Texture,
-  font: rl.Font,
+	font:            rl.Font,
 }
 
 Image_Key :: struct {
@@ -115,7 +114,7 @@ in_hitbox_v :: proc(x: i32, y: i32, width: i32, height: i32, mouse: Mouse_Data) 
 }
 
 draw_text :: proc(
-  text: string,
+	text: string,
 	position: Coord,
 	spacing: f32,
 	color: rl.Color,
@@ -128,11 +127,11 @@ draw_text :: proc(
 		font = window.font,
 		text = text_c,
 		position = rl.Vector2{f32(virtual_pos.x), f32(virtual_pos.y)},
-		fontSize = fontSize*f32(virtual_ratio),
-		spacing = spacing*f32(virtual_ratio),
+		fontSize = fontSize * f32(virtual_ratio),
+		spacing = spacing * f32(virtual_ratio),
 		tint = color,
 	)
-  delete(text_c)
+	delete(text_c)
 }
 
 draw_rectangle :: proc(position: Coord, size: Coord, window: Window_Data, color: rl.Color) {
@@ -146,6 +145,27 @@ draw_rectangle :: proc(position: Coord, size: Coord, window: Window_Data, color:
 	)
 }
 
+draw_slider :: proc(
+	position: Coord,
+	size: Coord,
+	window: Window_Data,
+	mouse: Mouse_Data,
+	slider_percentage: ^f64,
+	color: rl.Color,
+) {
+	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window)
+
+  if in_hitbox(position,size,mouse) && mouse.clicking{
+    slider_percentage^ = f64(mouse.pos.x-position.x) / f64(size.x)
+  }
+	rl.DrawRectangle(
+		i32(virtual_pos.x),
+		i32(virtual_pos.y),
+		i32(f64(size.x) * virtual_ratio * slider_percentage^),
+		i32(f64(size.y) * virtual_ratio),
+		color,
+  )
+}
 
 draw_png :: proc(
 	position: Coord,

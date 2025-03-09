@@ -1,6 +1,7 @@
 package rlib
 
 import nl "libs/nlib"
+import rg "libs/randgen"
 import rl "vendor:raylib"
 
 import "core:encoding/json"
@@ -58,8 +59,8 @@ tile_draw :: proc(
 			}
 			nl.draw_png(
 				position = nl.Coord {
-						i32(f64(x * tilesize) * size) + offset.x,
-						i32(f64(y * tilesize) * size) + offset.y,
+					i32(f64(x * tilesize) * size) + offset.x,
+					i32(f64(y * tilesize) * size) + offset.y,
 				},
 				png_name = textures[tile_data[y * max.x + x]],
 				window = window,
@@ -219,7 +220,6 @@ town_tab :: proc(
 
 }
 
-
 side_bar_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_State) {
 	if nl.button_png_t(
 		position = nl.Coord{0, 0},
@@ -240,26 +240,24 @@ side_bar_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_
 
 }
 
-
 process_inputs :: proc(game: ^Game_State) {
 	if (game.tab_state == 1) {
-		// odinfmt: disable
+			// odinfmt: disable
 		if rl.IsKeyDown(
 			rl.KeyboardKey.A,
-		) {game.tab_1.camera_vel.x += 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.D) {game.tab_1.camera_vel.x -= 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.W) {game.tab_1.camera_vel.y += 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.S) {game.tab_1.camera_vel.y -= 1;game.slide = true} else {game.slide = false}
-		// odinfmt: disable
+		) 
+    {game.tab_1.camera_vel.x += 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.D) 
+    {game.tab_1.camera_vel.x -= 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.W) 
+    {game.tab_1.camera_vel.y += 1;game.slide = true} else if rl.IsKeyDown(rl.KeyboardKey.S) 
+    {game.tab_1.camera_vel.y -= 1;game.slide = true} else {game.slide = false}
+		// odinfmt: enable
+    resize := f64(rl.GetMouseWheelMove())
+    if (resize < 0) {
+      game.tab_1.camera_zoom *= resize*0.05+1
+    } else {
+      game.tab_1.camera_zoom /= resize*-0.05+1
+    }
 
-
-		if rl.IsKeyPressed(rl.KeyboardKey.UP) {
-			game.tab_1.camera_zoom *= 2
-			game.tab_1.camera.x /= 2
-			game.tab_1.camera.y /= 2
-		}
-		if rl.IsKeyPressed(rl.KeyboardKey.DOWN) {
-			game.tab_1.camera_zoom /= 2
-			game.tab_1.camera.x *= 2
-			game.tab_1.camera.y *= 2
-		}
 	}
 }
 
