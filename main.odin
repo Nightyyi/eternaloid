@@ -59,6 +59,7 @@ settings_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_
 // all town tab stuff
 tile_color_draw :: proc(
 	tile_data: $T,
+	tile_set: [8]rl.Color,
 	max: nl.Coord,
 	offset: nl.Coord,
 	tilesize: i32,
@@ -76,16 +77,10 @@ tile_color_draw :: proc(
 					i32(f64(x * tilesize) * size) + offset.x,
 					i32(f64(y * tilesize) * size) + offset.y,
 				},
-				size = nl.Coord{i32(32 * size)+2, i32(32 * size)+2},
+				size = nl.Coord{i32(32 * size) + 2, i32(32 * size) + 2},
 				window = window^,
-				color = rl.Color {
-					u8(f64(color.r) * val),
-					u8(f64(color.g) * val),
-					u8(f64(color.b) * val),
-					255,
-				},
+				color = tile_set[int(val * 8)],
 			)
-
 		}
 	}
 }
@@ -168,7 +163,7 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 		window = window,
 		mouse = mouse,
 		size = 2,
-	) {game.tab_1.hold = "house_lv0.png";game.tab_1.hold_t = 1}
+	) {game.tab_1.hold = "house_lv0.png";game.tab_1.hold_t = 3}
 }
 
 set_town :: proc(game: ^Game_State, tile: nl.Coord, mouse: nl.Mouse_Data) {
@@ -199,6 +194,8 @@ town_tab :: proc(
 	rl.EndBlendMode()
 	nl.begin_draw_area(nl.Coord{295, 0}, nl.Coord{19, 13} * nl.Coord{32, 32}, window^)
 	tile_set := [?]string {
+		"",
+		"boulders.png",
 		"tree.png",
 		"house_lv0.png",
 		"house_lv1.png",
@@ -236,6 +233,16 @@ town_tab :: proc(
 				}}}}
 	tile_color_draw(
 		tile_data = game.tab_1.map_mesh.array,
+		tile_set = {
+			rl.Color{25, 25, 125, 255},
+			rl.Color{25, 25, 105, 255},
+			rl.Color{25, 65, 25, 255},
+			rl.Color{25, 75, 45, 255},
+			rl.Color{85, 125, 85, 255},
+			rl.Color{105, 105, 85, 255},
+			rl.Color{125, 125, 125, 255},
+			rl.Color{165, 165, 165, 255},
+		},
 		max = nl.Coord{100, 100},
 		offset = offset_tiles,
 		tilesize = 32,
@@ -258,7 +265,7 @@ town_tab :: proc(
 		)
 		rl.EndShaderMode()
 	}
-  rl.EndScissorMode()
+	rl.EndScissorMode()
 	nl.draw_png(position = mouse.pos, png_name = game.tab_1.hold, window = window, size = 2)
 
 	if (valid_tile) {set_town(game, on_tile_pos, mouse)}
@@ -313,10 +320,10 @@ side_bar_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_
 
 process_inputs :: proc(game: ^Game_State) {
 	if (game.tab_state == 0) {
-    if rl.IsKeyPressed((rl.KeyboardKey.M)){ 
-      game.tab_1.dev_see = game.tab_1.dev_see != true
-      fmt.println("dev seek: map")
-    }
+		if rl.IsKeyPressed((rl.KeyboardKey.M)) {
+			game.tab_1.dev_see = game.tab_1.dev_see != true
+			fmt.println("dev seek: map")
+		}
 	} else if (game.tab_state == 1) {
 			// odinfmt: disable
 		if rl.IsKeyDown(
@@ -328,13 +335,24 @@ process_inputs :: proc(game: ^Game_State) {
     {game.tab_1.camera_vel.y -= 1;game.slide = true} else {game.slide = false}
 		// odinfmt: enable
 		resize := f64(rl.GetMouseWheelMove())
-		if (resize < 0) {
-			game.tab_1.camera_zoom *= resize * 0.05 * game.tab_1.camera_zoom_speed * 3 + 1
-		} else {
-			game.tab_1.camera_zoom /= resize * -0.05 * game.tab_1.camera_zoom_speed * 3 + 1
-		}
+		if resize != 0 {
+			resize = resize * 0.05 * game.tab_1.camera_zoom_speed * 3
+			fmt.println(resize)
+			old_z: f64
+			if (resize < 0) {
+				game.tab_1.camera_zoom *= 2
+				zoom_a := game.tab_1.camera_zoom
+				margin: [2]f64 = {605.0, 400.0} / {4, 4} * {zoom_a,zoom_a}
+				game.tab_1.camera -= {i32(margin.x), i32(margin.y)}
+			} else {
+				zoom_a := game.tab_1.camera_zoom
+				game.tab_1.camera_zoom /= 2
+				margin: [2]f64 = {605.0, 400.0} / {4, 4} * {zoom_a,zoom_a}
+				game.tab_1.camera += {i32(margin.x), i32(margin.y)}
 
-	}
+			}
+
+		}}
 }
 
 main :: proc() {
@@ -380,11 +398,15 @@ main :: proc() {
 		tab_1 = Game_Tab_1 {
 			hold = "",
 			tile_data = tile_data_NO_USE[:],
-			map_mesh = rg.create_mesh_custom({100, 100}, 40, 2151232),
+			map_mesh = rg.create_mesh_custom({100, 100}, 70, 2151232),
 			camera_zoom = 1,
 			camera_zoom_speed = 0.3,
 		},
 	}
+	rg.generate_objects_i32(game.tab_1.map_mesh, &game.tab_1.tile_data, 0.7, {0.8, 1}, 1)
+	rg.generate_objects_i32(game.tab_1.map_mesh, &game.tab_1.tile_data, 0.9, {0.7, 0.8}, 1)
+	rg.generate_objects_i32(game.tab_1.map_mesh, &game.tab_1.tile_data, 0.9, {0.4, 0.65}, 2)
+
 
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
 	defer rl.UnloadShader(shader)
