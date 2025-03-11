@@ -117,7 +117,7 @@ pull_texture :: proc(
 in_hitbox :: proc(pos: Coord, size: Coord, mouse: Mouse_Data) -> bool {
 	delta := mouse.pos - pos
 	return (0 < delta.x && delta.x < size.x) && (0 < delta.y && delta.y < size.y)
-
+  
 
 }
 

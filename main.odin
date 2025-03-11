@@ -137,11 +137,11 @@ draw_all_tiles :: proc(
 	offset: nl.Coord,
 	tilesize: i32,
 	window: ^nl.Window_Data,
+	mouse: nl.Mouse_Data,
 	size: f64 = 1,
-	highlight: nl.Coord,
 	game: ^Game_State,
-) {
-
+) -> nl.Coord {
+	highlighted := nl.Coord{-1, 0}
 	pos := 0
 	for y in 0 ..< max.y {
 		for x in 0 ..< max.x {
@@ -177,23 +177,33 @@ draw_all_tiles :: proc(
 					window = window^,
 					color = tile_set[int(val * 8)],
 				)
-				if valinfront < val {
+				if nl.in_hitbox(
+					pos = position,
+					size = nl.Coord{i32(32 * size), i32(32 * size)},
+					mouse = mouse,
+				) {highlighted = nl.Coord{x, y}}
+				if i32(valinfront * 8) < i32(val * 8) {
 					elevated_pos := position
 					elevated_pos.y += i32(f64(tilesize) * size)
+					if nl.in_hitbox(
+						pos = elevated_pos,
+						size = nl.Coord{i32(32 * size), i32(16 * size)},
+						mouse = mouse,
+					) {highlighted = nl.Coord{x, y}}
 					nl.draw_rectangle(
 						position = elevated_pos,
-						size = nl.Coord{i32(32 * size) + 1, i32(32 * size) + 1},
+						size = nl.Coord{i32(32 * size) + 1, i32(16 * size) + 1},
 						window = window^,
 						color = rl.Color{25, 25, 25, 255},
 					)
 
 				}
-				if (nl.Coord{x, y} == highlight) {
+				if (nl.Coord{x, y} == highlighted) {
 					nl.draw_rectangle(
 						position = position,
 						size = nl.Coord{i32(32 * size), i32(32 * size)},
 						window = window^,
-						color = rl.Color{150, 150, 150, 255},
+						color = rl.Color{150, 150, 150, 100},
 					)
 				}
 				if i32(32 * size) > 4 {
@@ -208,6 +218,7 @@ draw_all_tiles :: proc(
 			}
 		}
 	}
+	return highlighted
 }
 
 // yes i do want a sepeate function for this
@@ -288,8 +299,6 @@ town_tab :: proc(
 	}
 	zoom_ts := (32 * game.tab_1.camera_zoom)
 	offset_tiles := nl.Coord{295, 0} + game.tab_1.camera
-	delta := (mouse.pos - offset_tiles)
-	on_tile_pos := nl.Coord{i32(f64(delta.x) / zoom_ts), i32(f64(delta.y) / zoom_ts)}
 
 	sum_velocity :=
 		game.tab_1.camera_vel.x * game.tab_1.camera_vel.x +
@@ -308,17 +317,11 @@ town_tab :: proc(
 
 	}
 
-	valid_tile := false
-	if on_tile_pos.x >= 0 {
-		if on_tile_pos.y >= 0 {
-			if on_tile_pos.x < game.tab_1.map_mesh.size.x {
-				if on_tile_pos.y < game.tab_1.map_mesh.size.y {
-					valid_tile = true
-				}}}}
+  on_tile_pos : nl.Coord
 	if !game.tab_1.dev_see {
 		rl.BeginShaderMode(shader)
 
-		draw_all_tiles(
+		on_tile_pos = draw_all_tiles(
 			tile_data = game.tab_1.tile_data,
 			altitude = game.tab_1.map_mesh.array,
 			tile_set = {
@@ -337,11 +340,18 @@ town_tab :: proc(
 			tilesize = 32,
 			window = window,
 			size = game.tab_1.camera_zoom,
-			highlight = on_tile_pos,
+			mouse = mouse,
 			game = game,
 		)
 		rl.EndShaderMode()
 	}
+	valid_tile := false
+	if on_tile_pos.x >= 0 {
+		if on_tile_pos.y >= 0 {
+			if on_tile_pos.x < game.tab_1.map_mesh.size.x {
+				if on_tile_pos.y < game.tab_1.map_mesh.size.y {
+					valid_tile = true
+				}}}}
 	rl.EndScissorMode()
 	nl.draw_png(position = mouse.pos, png_name = game.tab_1.hold, window = window, size = 2)
 
@@ -418,7 +428,6 @@ process_inputs :: proc(game: ^Game_State) {
 		resize := f64(rl.GetMouseWheelMove())
 		if resize != 0 {
 			resize = resize * 0.05 * game.tab_1.camera_zoom_speed * 3
-			fmt.println(resize)
 			old_z: f64
 			if (resize < 0) {
 				game.tab_1.camera_zoom *= 2
