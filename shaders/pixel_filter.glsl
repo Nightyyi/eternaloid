@@ -4,6 +4,7 @@ in vec2 fragTexCoord;
 
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
+uniform vec4 frgColor;
 
 out vec4 color;
 
@@ -17,6 +18,5 @@ void main() {
 
     fr = smoothstep( vec2(0.5) - aa, vec2(0.5) + aa, fr);
     
-    color = texture(texture0,((fl + fr - 0.5) / texture_size));
-    // color = vec4(fragTexCoord,0.0,1.0)*colDiffuse;
+    color = texture(texture0,((fl + fr - 0.5) / texture_size)) * colDiffuse * fragColor;
 }

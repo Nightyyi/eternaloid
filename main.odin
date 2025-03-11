@@ -31,6 +31,7 @@ Game_Tab_1 :: struct {
 	tile_data:         []i32,
 	map_mesh:          rg.mesh,
 	dev_see:           bool,
+	dev_elevation:     bool,
 }
 
 
@@ -71,63 +72,145 @@ tile_color_draw :: proc(
 	pos := 0
 	for y in 0 ..< max.y {
 		for x in 0 ..< max.x {
+			position := nl.Coord {
+				i32(f64(x * tilesize) * size) + offset.x,
+				i32(f64(y * tilesize) * size) + offset.y,
+			}
 			val := tile_data[x + y * max.x]
-			nl.draw_rectangle(
-				position = nl.Coord {
-					i32(f64(x * tilesize) * size) + offset.x,
-					i32(f64(y * tilesize) * size) + offset.y,
-				},
-				size = nl.Coord{i32(32 * size) + 2, i32(32 * size) + 2},
-				window = window^,
-				color = tile_set[int(val * 8)],
-			)
-		}
-	}
+			draw := true
+			if (position.x + i32(32 * size)) < offset.x {
+				draw = false}
+			if (position.y + i32(32 * size)) < 0 {
+				draw = false}
+			if (position.x) > window.original_size.x {
+				draw = false}
+			if (position.y) > window.original_size.y {
+				draw = false}
+			if draw {
+
+				nl.draw_rectangle(
+					position = position,
+					size = nl.Coord{i32(32 * size) + 2, i32(32 * size) + 2},
+					window = window^,
+					color = tile_set[int(val * 8)],
+				)
+			}}
+	}}
+
+animate_textures :: proc(window: ^nl.Window_Data, frame: i128) {
+	grass := frame / 100 % 4
+	if (grass ==
+		   0) {nl.switch_texture(original_image_name = "grass.png", new_image_name = "grass1.png", image_cache_map = &window.image_cache_map)}
+	if (grass ==
+		   1) {nl.switch_texture(original_image_name = "grass.png", new_image_name = "grass2.png", image_cache_map = &window.image_cache_map)}
+	if (grass ==
+		   2) {nl.switch_texture(original_image_name = "grass.png", new_image_name = "grass3.png", image_cache_map = &window.image_cache_map)}
+	if (grass ==
+		   3) {nl.switch_texture(original_image_name = "grass.png", new_image_name = "grass1.png", image_cache_map = &window.image_cache_map)}
+}
+
+check_can_draw :: proc(
+	position: nl.Coord,
+	size: f64,
+	offset: nl.Coord,
+	window: nl.Window_Data,
+) -> bool {
+	draw := true
+	if (position.x + i32(32 * size)) < offset.x {
+		draw = false}
+	if (position.y + i32(32 * size)) < 0 {
+		draw = false}
+	if (position.x + i32(32 * size)) > window.original_size.x {
+		draw = false}
+	if (position.y + i32(32 * size)) > window.original_size.y {
+		draw = false}
+	return draw
 }
 
 // all town tab stuff
-tile_draw :: proc(
+draw_all_tiles :: proc(
 	tile_data: $T,
+	altitude: $C,
 	textures: [$P]string,
+	tile_set: [8]rl.Color,
 	max: nl.Coord,
 	offset: nl.Coord,
 	tilesize: i32,
 	window: ^nl.Window_Data,
 	size: f64 = 1,
 	highlight: nl.Coord,
+	game: ^Game_State,
 ) {
 
 	pos := 0
 	for y in 0 ..< max.y {
 		for x in 0 ..< max.x {
-			if (nl.Coord{x, y} == highlight) {
+			val := altitude[x + y * max.x]
+			raised := false
+			valinfront: f64 = 100
+			if (y + 1 < max.y) {
+				valinfront = altitude[x + (y + 1) * max.x]
+			}
+
+			elevation := i32(val * 8) * 16
+			if int(val * 8) < 1 {
+				elevation += 1 * 16
+			}
+			if game.tab_1.dev_elevation {
+				elevation = 1
+			}
+			position := nl.Coord {
+				i32(f64(x * tilesize) * size) + offset.x,
+				i32((f64(y * tilesize) - f64(elevation)) * size) + offset.y,
+			}
+
+			draw := check_can_draw(
+				position = position,
+				size = size,
+				offset = offset,
+				window = window^,
+			)
+			if draw {
 				nl.draw_rectangle(
-					position = nl.Coord {
-						i32(f64(x * tilesize) * size) + offset.x,
-						i32(f64(y * tilesize) * size) + offset.y,
-					},
-					size = nl.Coord{i32(32 * size), i32(32 * size)},
+					position = position,
+					size = nl.Coord{i32(32 * size) + 1, i32(32 * size) + 1},
 					window = window^,
-					color = rl.Color{150, 150, 150, 255},
+					color = tile_set[int(val * 8)],
 				)
+				if valinfront < val {
+					elevated_pos := position
+					elevated_pos.y += i32(f64(tilesize) * size)
+					nl.draw_rectangle(
+						position = elevated_pos,
+						size = nl.Coord{i32(32 * size) + 1, i32(32 * size) + 1},
+						window = window^,
+						color = rl.Color{25, 25, 25, 255},
+					)
+
+				}
+				if (nl.Coord{x, y} == highlight) {
+					nl.draw_rectangle(
+						position = position,
+						size = nl.Coord{i32(32 * size), i32(32 * size)},
+						window = window^,
+						color = rl.Color{150, 150, 150, 255},
+					)
+				}
+				if i32(32 * size) > 4 {
+					nl.draw_png(
+						position = position,
+						png_name = textures[tile_data[y * max.x + x]],
+						window = window,
+						size = f32(2 * size),
+						color = rl.Color{255, 255, 255, 255},
+					)}
 
 			}
-			nl.draw_png(
-				position = nl.Coord {
-					i32(f64(x * tilesize) * size) + offset.x,
-					i32(f64(y * tilesize) * size) + offset.y,
-				},
-				png_name = textures[tile_data[y * max.x + x]],
-				window = window,
-				size = f32(2 * size),
-				color = rl.Color{255, 255, 255, 0},
-			)
-
 		}
 	}
 }
 
-// yes i do want a seperate function for this
+// yes i do want a sepeate function for this
 set_icon :: proc() {
 	icon_filepath := filepath.join([]string{"assets", "ball.png"})
 	icon_filepath_c: cstring = strings.clone_to_cstring(icon_filepath)
@@ -163,13 +246,13 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 		window = window,
 		mouse = mouse,
 		size = 2,
-	) {game.tab_1.hold = "house_lv0.png";game.tab_1.hold_t = 3}
+	) {game.tab_1.hold = "house_lv0.png";game.tab_1.hold_t = 4}
 }
 
 set_town :: proc(game: ^Game_State, tile: nl.Coord, mouse: nl.Mouse_Data) {
 	if (mouse.clicking) {
 		if (game.tab_1.hold != "") {
-			tile_index: i32 = 100 * tile.y + tile.x
+			tile_index: i32 = game.tab_1.map_mesh.size.x * tile.y + tile.x
 			fmt.println(tile_index)
 			game.tab_1.tile_data[tile_index] = game.tab_1.hold_t
 			game.tab_1.hold = ""
@@ -197,6 +280,7 @@ town_tab :: proc(
 		"",
 		"boulders.png",
 		"tree.png",
+		"grass.png",
 		"house_lv0.png",
 		"house_lv1.png",
 		"house_lv2.png",
@@ -227,41 +311,34 @@ town_tab :: proc(
 	valid_tile := false
 	if on_tile_pos.x >= 0 {
 		if on_tile_pos.y >= 0 {
-			if on_tile_pos.x < 100 {
-				if on_tile_pos.y < 100 {
+			if on_tile_pos.x < game.tab_1.map_mesh.size.x {
+				if on_tile_pos.y < game.tab_1.map_mesh.size.y {
 					valid_tile = true
 				}}}}
-	tile_color_draw(
-		tile_data = game.tab_1.map_mesh.array,
-		tile_set = {
-			rl.Color{25, 25, 125, 255},
-			rl.Color{25, 25, 105, 255},
-			rl.Color{25, 65, 25, 255},
-			rl.Color{25, 75, 45, 255},
-			rl.Color{85, 125, 85, 255},
-			rl.Color{105, 105, 85, 255},
-			rl.Color{125, 125, 125, 255},
-			rl.Color{165, 165, 165, 255},
-		},
-		max = nl.Coord{100, 100},
-		offset = offset_tiles,
-		tilesize = 32,
-		window = window,
-		size = game.tab_1.camera_zoom,
-		color = {33, 31, 50},
-	)
 	if !game.tab_1.dev_see {
 		rl.BeginShaderMode(shader)
 
-		tile_draw(
+		draw_all_tiles(
 			tile_data = game.tab_1.tile_data,
+			altitude = game.tab_1.map_mesh.array,
+			tile_set = {
+				rl.Color{25, 25, 125, 255},
+				rl.Color{25, 25, 105, 255},
+				rl.Color{25, 65, 25, 255},
+				rl.Color{25, 75, 45, 255},
+				rl.Color{85, 125, 85, 255},
+				rl.Color{105, 105, 85, 255},
+				rl.Color{125, 125, 125, 255},
+				rl.Color{165, 165, 165, 255},
+			},
 			textures = tile_set,
-			max = nl.Coord{100, 100},
+			max = nl.Coord{300, 300},
 			offset = offset_tiles,
 			tilesize = 32,
 			window = window,
 			size = game.tab_1.camera_zoom,
 			highlight = on_tile_pos,
+			game = game,
 		)
 		rl.EndShaderMode()
 	}
@@ -324,6 +401,10 @@ process_inputs :: proc(game: ^Game_State) {
 			game.tab_1.dev_see = game.tab_1.dev_see != true
 			fmt.println("dev seek: map")
 		}
+		if rl.IsKeyPressed((rl.KeyboardKey.E)) {
+			game.tab_1.dev_see = game.tab_1.dev_see != true
+			fmt.println("dev seek: elevation")
+		}
 	} else if (game.tab_state == 1) {
 			// odinfmt: disable
 		if rl.IsKeyDown(
@@ -342,12 +423,12 @@ process_inputs :: proc(game: ^Game_State) {
 			if (resize < 0) {
 				game.tab_1.camera_zoom *= 2
 				zoom_a := game.tab_1.camera_zoom
-				margin: [2]f64 = {605.0, 400.0} / {4, 4} * {zoom_a,zoom_a}
+				margin: [2]f64 = {605.0, 400.0} / {4, 4} * {zoom_a, zoom_a}
 				game.tab_1.camera -= {i32(margin.x), i32(margin.y)}
 			} else {
-				zoom_a := game.tab_1.camera_zoom
 				game.tab_1.camera_zoom /= 2
-				margin: [2]f64 = {605.0, 400.0} / {4, 4} * {zoom_a,zoom_a}
+				zoom_a := game.tab_1.camera_zoom
+				margin: [2]f64 = {605.0, 400.0} / {2, 2} * {zoom_a, zoom_a}
 				game.tab_1.camera += {i32(margin.x), i32(margin.y)}
 
 			}
@@ -380,7 +461,7 @@ main :: proc() {
 	rl.SetWindowState(rl.ConfigFlags{.WINDOW_RESIZABLE})
 	// rl.SetWindowState(rl.ConfigFlags{.WINDOW_ALWAYS_RUN})
 	set_icon()
-	tile_data_NO_USE: [10000]i32
+	tile_data_NO_USE: []i32 = make_slice([]i32, 300 * 300)
 	window := nl.Window_Data {
 		original_size   = nl.Coord{Screen_Width, Screen_Height},
 		present_size    = nl.Coord{Screen_Width, Screen_Height},
@@ -397,20 +478,67 @@ main :: proc() {
 		tab_state = 1,
 		tab_1 = Game_Tab_1 {
 			hold = "",
-			tile_data = tile_data_NO_USE[:],
-			map_mesh = rg.create_mesh_custom({100, 100}, 70, 2151232),
+			tile_data = tile_data_NO_USE,
+			map_mesh = rg.create_mesh_custom({300, 300}, 300, 2151232),
 			camera_zoom = 1,
 			camera_zoom_speed = 0.3,
 		},
 	}
-	rg.generate_objects_i32(game.tab_1.map_mesh, &game.tab_1.tile_data, 0.7, {0.8, 1}, 1)
-	rg.generate_objects_i32(game.tab_1.map_mesh, &game.tab_1.tile_data, 0.9, {0.7, 0.8}, 1)
-	rg.generate_objects_i32(game.tab_1.map_mesh, &game.tab_1.tile_data, 0.9, {0.4, 0.65}, 2)
+	gen_seed: i64 = 15124
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.7,
+		range = {0.15, 1},
+		set = 3,
+		seed = &gen_seed,
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.2,
+		range = {0.8, 1},
+		set = 1,
+		seed = &gen_seed,
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.1,
+		range = {0.15, 1},
+		set = 1,
+		seed = &gen_seed,
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.2,
+		range = {0.7, 0.8},
+		set = 1,
+		seed = &gen_seed,
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.2,
+		range = {0.4, 0.65},
+		set = 2,
+		seed = &gen_seed,
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.3,
+		range = {0.15, 0.4},
+		set = 2,
+		seed = &gen_seed,
+	)
 
 
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
 	defer rl.UnloadShader(shader)
 
+	frame: i128 = 0
 
 	for !rl.WindowShouldClose() {
 
@@ -427,6 +555,9 @@ main :: proc() {
 
 
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
+
+		frame += 1
+		animate_textures(window = &window, frame = frame)
 		if (game.tab_state == 0) {
 			settings_tab(window = &window, mouse = mouse, game = &game)
 		} else if (game.tab_state == 1) {
@@ -434,8 +565,8 @@ main :: proc() {
 		}
 		rl.EndDrawing()
 	}
-
 	delete(window.image_cache_map)
+	delete(tile_data_NO_USE)
 	delete(game.tab_1.map_mesh.array)
 
 }

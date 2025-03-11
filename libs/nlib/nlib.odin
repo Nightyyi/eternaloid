@@ -84,6 +84,21 @@ acquire_texture :: proc(image_name: string) -> rl.Texture {
 	return texture
 }
 
+switch_texture :: proc(
+	original_image_name: string,
+	new_image_name: string,
+	image_cache_map: ^map[string]rl.Texture,
+)  {
+	cached_texture, ok := image_cache_map[new_image_name]
+	if ok {
+		image_cache_map[original_image_name] = cached_texture
+	} else {
+		texture := acquire_texture(new_image_name)
+		image_cache_map[new_image_name] = texture
+		image_cache_map[original_image_name] = texture
+	}
+}
+
 pull_texture :: proc(
 	image_name: string,
 	image_cache_map: ^map[string]rl.Texture,
@@ -191,6 +206,9 @@ draw_png :: proc(
 	rotation: f32 = 0,
 	color: rl.Color = rl.Color{255, 255, 255, 255},
 ) {
+  draw := true
+  if (position.x > window.original_size.x){ draw = false}
+  if (position.y > window.original_size.y){ draw = false}
 	if (png_name != "") {
 		texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
 		virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)
