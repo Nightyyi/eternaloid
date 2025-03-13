@@ -1,0 +1,6 @@
+package odinium
+
+bigfloat :: struct{
+  
+}
+
