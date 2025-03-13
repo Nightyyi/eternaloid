@@ -1,7 +1,9 @@
 package rlib
 
 import nl "libs/nlib"
+import od "libs/odinium"
 import rg "libs/randgen"
+import rsc "libs/resource"
 import rl "vendor:raylib"
 
 import "core:encoding/json"
@@ -20,6 +22,7 @@ Game_State :: struct {
 Global_Data :: struct {
 	oid: f64,
 }
+
 
 Game_Tab_1 :: struct {
 	camera:            nl.Coord,
@@ -317,7 +320,7 @@ town_tab :: proc(
 
 	}
 
-  on_tile_pos : nl.Coord
+	on_tile_pos: nl.Coord
 	if !game.tab_1.dev_see {
 		rl.BeginShaderMode(shader)
 
