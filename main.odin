@@ -174,11 +174,31 @@ draw_all_tiles :: proc(
 				window = window^,
 			)
 			if draw {
+
+				multiply_color :: proc(n: f64, x: rl.Color) -> rl.Color {
+					return rl.Color {
+						u8(n * f64(x.r)),
+						u8(n * f64(x.g)),
+						u8(n * f64(x.b)),
+						u8(n * f64(x.a)),
+					}}
+
+				color_tile := tile_set[int(val * 8)]
+				if (int(val * 8) == 1) {
+					color_tile2 := tile_set[0]
+					color_tile =
+						multiply_color(val*4, color_tile) + multiply_color((1 - val*4), color_tile2)
+				}
+				if (int(val * 8) == 0) {
+					color_tile2 := tile_set[1]
+					color_tile =
+						multiply_color(val*4, color_tile2) + multiply_color((1 - val*4), color_tile)
+				}
 				nl.draw_rectangle(
 					position = position,
 					size = nl.Coord{i32(32 * size) + 1, i32(32 * size) + 1},
 					window = window^,
-					color = tile_set[int(val * 8)],
+					color = color_tile,
 				)
 				if nl.in_hitbox(
 					pos = position,
@@ -280,6 +300,104 @@ town_tab :: proc(
 	mouse: nl.Mouse_Data,
 	shader: rl.Shader,
 ) {
+	print_coord_mouse :: proc(on_tile_pos: nl.Coord, window: nl.Window_Data) {
+
+		buffer: [16]u8
+		temp_string := fmt.bprintf(buffer[:], "X %d, Y %d", on_tile_pos.x, on_tile_pos.y)
+		nl.draw_text(
+			text = temp_string,
+			position = nl.Coord{300, 380},
+			spacing = 5,
+			color = rl.Color{50, 50, 50, 255},
+			fontSize = 20,
+			window = window,
+		)
+
+	}
+
+	display_oidstat :: proc(game: Game_State, window: ^nl.Window_Data) {
+		buffer: [16]u8
+		temp_string := fmt.bprintf(buffer[:], "%f", game.global.oid)
+		display_icon_text(
+			png = "oid.png",
+			text = temp_string,
+			position = nl.Coord{70, 8},
+			offset = nl.Coord{32, 9},
+			font_size = 15,
+			window = window,
+		)
+
+	}
+
+	buildings_manager :: proc(
+		on_tile_pos: nl.Coord,
+		game: ^Game_State,
+		window: ^nl.Window_Data,
+		mouse: nl.Mouse_Data,
+	) {
+
+
+		valid_tile := false
+		if on_tile_pos.x >= 0 {
+			if on_tile_pos.y >= 0 {
+				if on_tile_pos.x < game.tab_1.map_mesh.size.x {
+					if on_tile_pos.y < game.tab_1.map_mesh.size.y {
+						valid_tile = true
+					}}}}
+		nl.draw_png(position = mouse.pos, png_name = game.tab_1.hold, window = window, size = 2)
+		if (valid_tile) {set_town(game, on_tile_pos, mouse)}
+		building_select_tab(game = game, window = window, mouse = mouse)
+	}
+
+	display_tiles :: proc(
+		game: ^Game_State,
+		on_tile_pos: ^nl.Coord,
+		shader: rl.Shader,
+		window: ^nl.Window_Data,
+		mouse: nl.Mouse_Data,
+	) {
+		tile_set := [?]string {
+			"",
+			"boulders.png",
+			"tree.png",
+			"grass.png",
+			"house_lv0.png",
+			"house_lv1.png",
+			"house_lv2.png",
+			"house_lv3.png",
+		}
+		offset_tiles := nl.Coord{295, 0} + game.tab_1.camera
+		if !game.tab_1.dev_see {
+			nl.begin_draw_area(nl.Coord{295, 0}, nl.Coord{19, 13} * nl.Coord{32, 32}, window^)
+			rl.BeginShaderMode(shader)
+
+			on_tile_pos^ = draw_all_tiles(
+				tile_data = game.tab_1.tile_data,
+				altitude = game.tab_1.map_mesh.array,
+				tile_set = {
+					rl.Color{25, 25, 35, 255},
+					rl.Color{25, 25, 125, 255},
+					rl.Color{25, 65, 25, 255},
+					rl.Color{25, 75, 45, 255},
+					rl.Color{85, 125, 85, 255},
+					rl.Color{105, 105, 85, 255},
+					rl.Color{125, 125, 125, 255},
+					rl.Color{165, 165, 165, 255},
+				},
+				textures = tile_set,
+				max = nl.Coord{300, 300},
+				offset = offset_tiles,
+				tilesize = 32,
+				window = window,
+				size = game.tab_1.camera_zoom,
+				mouse = mouse,
+				game = game,
+			)
+			rl.EndShaderMode()
+			rl.EndScissorMode()
+		}
+	}
+
 	nl.draw_rectangle(nl.Coord{285, 0}, nl.Coord{10, 400}, window^, rl.Color{33, 31, 50, 255})
 	rl.BeginBlendMode(rl.BlendMode.SUBTRACT_COLORS)
 	nl.draw_rectangle(
@@ -289,19 +407,7 @@ town_tab :: proc(
 		rl.Color{10, 10, 10, 255},
 	)
 	rl.EndBlendMode()
-	nl.begin_draw_area(nl.Coord{295, 0}, nl.Coord{19, 13} * nl.Coord{32, 32}, window^)
-	tile_set := [?]string {
-		"",
-		"boulders.png",
-		"tree.png",
-		"grass.png",
-		"house_lv0.png",
-		"house_lv1.png",
-		"house_lv2.png",
-		"house_lv3.png",
-	}
 	zoom_ts := (32 * game.tab_1.camera_zoom)
-	offset_tiles := nl.Coord{295, 0} + game.tab_1.camera
 
 	sum_velocity :=
 		game.tab_1.camera_vel.x * game.tab_1.camera_vel.x +
@@ -321,68 +427,14 @@ town_tab :: proc(
 	}
 
 	on_tile_pos: nl.Coord
-	if !game.tab_1.dev_see {
-		rl.BeginShaderMode(shader)
 
-		on_tile_pos = draw_all_tiles(
-			tile_data = game.tab_1.tile_data,
-			altitude = game.tab_1.map_mesh.array,
-			tile_set = {
-				rl.Color{25, 25, 125, 255},
-				rl.Color{25, 25, 105, 255},
-				rl.Color{25, 65, 25, 255},
-				rl.Color{25, 75, 45, 255},
-				rl.Color{85, 125, 85, 255},
-				rl.Color{105, 105, 85, 255},
-				rl.Color{125, 125, 125, 255},
-				rl.Color{165, 165, 165, 255},
-			},
-			textures = tile_set,
-			max = nl.Coord{300, 300},
-			offset = offset_tiles,
-			tilesize = 32,
-			window = window,
-			size = game.tab_1.camera_zoom,
-			mouse = mouse,
-			game = game,
-		)
-		rl.EndShaderMode()
-	}
-	valid_tile := false
-	if on_tile_pos.x >= 0 {
-		if on_tile_pos.y >= 0 {
-			if on_tile_pos.x < game.tab_1.map_mesh.size.x {
-				if on_tile_pos.y < game.tab_1.map_mesh.size.y {
-					valid_tile = true
-				}}}}
-	rl.EndScissorMode()
-	nl.draw_png(position = mouse.pos, png_name = game.tab_1.hold, window = window, size = 2)
-
-	if (valid_tile) {set_town(game, on_tile_pos, mouse)}
-
-	building_select_tab(game = game, window = window, mouse = mouse)
-	buffer: [16]u8
-	temp_string := fmt.bprintf(buffer[:], "%f", game.global.oid)
-	display_icon_text(
-		png = "oid.png",
-		text = temp_string,
-		position = nl.Coord{70, 8},
-		offset = nl.Coord{32, 9},
-		font_size = 15,
-		window = window,
-	)
-
-	temp_string = fmt.bprintf(buffer[:], "X %d, Y %d", on_tile_pos.x, on_tile_pos.y)
-	nl.draw_text(
-		text = temp_string,
-		position = nl.Coord{300, 380},
-		spacing = 5,
-		color = rl.Color{50, 50, 50, 255},
-		fontSize = 20,
-		window = window^,
-	)
+	display_tiles(game, &on_tile_pos, shader, window, mouse)
 
 
+	buildings_manager(on_tile_pos = on_tile_pos, game = game, window = window, mouse = mouse)
+
+	display_oidstat(game^, window)
+	print_coord_mouse(on_tile_pos, window^)
 	// display resources
 
 
@@ -434,14 +486,14 @@ process_inputs :: proc(game: ^Game_State) {
 			old_z: f64
 			if (resize < 0) {
 				game.tab_1.camera_zoom *= 2
-				zoom_a := game.tab_1.camera_zoom
-				margin: [2]f64 = {605.0, 400.0} / {4, 4} * {zoom_a, zoom_a}
-				game.tab_1.camera -= {i32(margin.x), i32(margin.y)}
+				// zoom_a := game.tab_1.camera_zoom
+				// margin: [2]f64 = {605.0, 400.0} / {4, 4} * {zoom_a, zoom_a}
+				// game.tab_1.camera -= {i32(margin.x), i32(margin.y)}
 			} else {
 				game.tab_1.camera_zoom /= 2
-				zoom_a := game.tab_1.camera_zoom
-				margin: [2]f64 = {605.0, 400.0} / {2, 2} * {zoom_a, zoom_a}
-				game.tab_1.camera += {i32(margin.x), i32(margin.y)}
+				// zoom_a := game.tab_1.camera_zoom
+				// margin: [2]f64 = {605.0, 400.0} / {2, 2} * {zoom_a, zoom_a}
+				// game.tab_1.camera += {i32(margin.x), i32(margin.y)}
 
 			}
 

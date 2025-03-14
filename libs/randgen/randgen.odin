@@ -67,8 +67,6 @@ create_mesh_custom :: proc(size: [2]i32, zoom: f64, seed: i64) -> mesh {
 			if ((x / 2) % 2 != (y / 2) % 2) {value = value + 0.00125} else {value = value - 0.00125}
 			value *= value+0.2
 			value = clamp(value, 0, 1)
-      value = f32((i32(value * 8))) / 8
-			value = clamp(value, 0, 1)
 
 			array[x + y * size.x] = f64(value)
 		}
