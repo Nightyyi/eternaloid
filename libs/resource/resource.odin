@@ -1,6 +1,13 @@
 package resource
 
 import od "../odinium"
+import "core:fmt"
+
+Boost_Type :: enum {
+	base,
+	multiplier,
+	exponent,
+}
 
 Resource_Manager :: struct {
 	output:        ^od.bigfloat,
@@ -28,21 +35,46 @@ create_resource_manager :: proc(
 }
 
 run_resource_manager :: proc(manager: ^Resource_Manager) {
+  fmt.println(manager)
+  accumilator : od.bigfloat= od.bigfloat{0, 0}
 	if manager.update {
 
-		accumilator := od.bigfloat{0, 0}
+    fmt.print("1")
 		for i in 0 ..< len(manager.base) {
 			accumilator = od.add(accumilator, manager.base[i])
 		}
+    fmt.print("1")
 		for i in 0 ..< len(manager.multiplier) {
 			multiplier := od.add(manager.multiplier[i], od.bigfloat{1, 0})
 			accumilator = od.mul(accumilator, multiplier)
 		}
+    fmt.print("1")
+
 		for i in 0 ..< len(manager.base) {
 			exponent := od.add(manager.exponent[i], od.bigfloat{1, 0})
 			accumilator = od.add(accumilator, exponent)
 		}
+    fmt.print("1")
 		manager.cached_income = accumilator
+		manager.update = false
 	}
+  fmt.print("1")
 	manager.output^ = od.add(manager.output^, manager.cached_income)
+}
+
+update_resource :: proc(
+	manager: ^Resource_Manager,
+	set_val: od.bigfloat,
+	index: int,
+	boost_type: Boost_Type,
+) {
+	manager.update = true
+	switch boost_type {
+	case Boost_Type.base:
+		manager.base[index] = set_val
+	case Boost_Type.multiplier:
+		manager.multiplier[index] = set_val
+	case Boost_Type.exponent:
+		manager.base[index] = set_val
+	}
 }

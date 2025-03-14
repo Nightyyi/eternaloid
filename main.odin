@@ -13,16 +13,26 @@ import "core:path/filepath"
 import "core:strings"
 
 Game_State :: struct {
-	global:    Global_Data,
+	global:    ^Global_Data,
+	global_m:  Global_Resource,
+	events:    Events,
 	tab_state: i32,
 	tab_1:     Game_Tab_1,
 	slide:     bool,
 }
 
 Global_Data :: struct {
-	oid: f64,
+	entities: []i32,
+	oid:      od.bigfloat,
 }
 
+Global_Resource :: struct {
+	oid: rsc.Resource_Manager,
+}
+
+Events :: struct {
+	update_town: bool,
+}
 
 Game_Tab_1 :: struct {
 	camera:            nl.Coord,
@@ -36,7 +46,6 @@ Game_Tab_1 :: struct {
 	dev_see:           bool,
 	dev_elevation:     bool,
 }
-
 
 // settings tab
 
@@ -130,6 +139,34 @@ check_can_draw :: proc(
 	return draw
 }
 
+global :: proc(game: ^Game_State) {
+
+	count_entities :: proc(game: ^Game_State) -> []i32 {
+		list_entities := make_slice([]i32, 8)
+		for i in game.tab_1.tile_data {
+			list_entities[i] += 1
+		}
+		return list_entities
+	}
+
+	if game.events.update_town {
+		delete(game.global.entities)
+		game.global.entities = count_entities(game)
+		rsc.update_resource(
+			&game.global_m.oid,
+			od.bigfloat{f64(game.global.entities[3]), 0},
+			0,
+			rsc.Boost_Type.base,
+		)
+		game.events.update_town = false
+    fmt.println(f64(game.global.entities[3]))
+	}
+
+	rsc.run_resource_manager(&game.global_m.oid)
+
+}
+
+
 // all town tab stuff
 draw_all_tiles :: proc(
 	tile_data: $T,
@@ -184,15 +221,18 @@ draw_all_tiles :: proc(
 					}}
 
 				color_tile := tile_set[int(val * 8)]
+				val_f := f64(int(val * 40)) / 40
 				if (int(val * 8) == 1) {
 					color_tile2 := tile_set[0]
 					color_tile =
-						multiply_color(val*4, color_tile) + multiply_color((1 - val*4), color_tile2)
+						multiply_color(val_f * 4, color_tile) +
+						multiply_color((1 - val_f * 4), color_tile2)
 				}
 				if (int(val * 8) == 0) {
 					color_tile2 := tile_set[1]
 					color_tile =
-						multiply_color(val*4, color_tile2) + multiply_color((1 - val*4), color_tile)
+						multiply_color(val_f * 4, color_tile2) +
+						multiply_color((1 - val_f * 4), color_tile)
 				}
 				nl.draw_rectangle(
 					position = position,
@@ -244,6 +284,64 @@ draw_all_tiles :: proc(
 	return highlighted
 }
 
+generate_objects :: proc(game: ^Game_State) {
+	gen_seed: i64 = 15124
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.7,
+		range = {0.15, 1},
+		set = 3,
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.2,
+		range = {0.8, 1},
+		set = 1,
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.1,
+		range = {0.15, 1},
+		set = 1,
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.2,
+		range = {0.7, 0.8},
+		set = 1,
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.2,
+		range = {0.4, 0.65},
+		set = 2,
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.3,
+		range = {0.15, 0.4},
+		set = 2,
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+	)
+
+}
 // yes i do want a sepeate function for this
 set_icon :: proc() {
 	icon_filepath := filepath.join([]string{"assets", "ball.png"})
@@ -291,6 +389,7 @@ set_town :: proc(game: ^Game_State, tile: nl.Coord, mouse: nl.Mouse_Data) {
 			game.tab_1.tile_data[tile_index] = game.tab_1.hold_t
 			game.tab_1.hold = ""
 			game.tab_1.hold_t = -1
+			game.events.update_town = true
 		}}
 }
 
@@ -317,7 +416,12 @@ town_tab :: proc(
 
 	display_oidstat :: proc(game: Game_State, window: ^nl.Window_Data) {
 		buffer: [16]u8
-		temp_string := fmt.bprintf(buffer[:], "%f", game.global.oid)
+		temp_string := fmt.bprintf(
+			buffer[:],
+			"%fe%f",
+			game.global.oid.mantissa,
+			f64(game.global.oid.exponent),
+		)
 		display_icon_text(
 			png = "oid.png",
 			text = temp_string,
@@ -335,8 +439,6 @@ town_tab :: proc(
 		window: ^nl.Window_Data,
 		mouse: nl.Mouse_Data,
 	) {
-
-
 		valid_tile := false
 		if on_tile_pos.x >= 0 {
 			if on_tile_pos.y >= 0 {
@@ -370,7 +472,6 @@ town_tab :: proc(
 		if !game.tab_1.dev_see {
 			nl.begin_draw_area(nl.Coord{295, 0}, nl.Coord{19, 13} * nl.Coord{32, 32}, window^)
 			rl.BeginShaderMode(shader)
-
 			on_tile_pos^ = draw_all_tiles(
 				tile_data = game.tab_1.tile_data,
 				altitude = game.tab_1.map_mesh.array,
@@ -398,41 +499,40 @@ town_tab :: proc(
 		}
 	}
 
-	nl.draw_rectangle(nl.Coord{285, 0}, nl.Coord{10, 400}, window^, rl.Color{33, 31, 50, 255})
-	rl.BeginBlendMode(rl.BlendMode.SUBTRACT_COLORS)
-	nl.draw_rectangle(
-		nl.Coord{295, 0},
-		nl.Coord{19, 13} * nl.Coord{32, 32},
-		window^,
-		rl.Color{10, 10, 10, 255},
-	)
-	rl.EndBlendMode()
-	zoom_ts := (32 * game.tab_1.camera_zoom)
-
-	sum_velocity :=
-		game.tab_1.camera_vel.x * game.tab_1.camera_vel.x +
-		game.tab_1.camera_vel.y * game.tab_1.camera_vel.y
-	if (sum_velocity > 1) {
-		game.tab_1.camera += nl.Coord {
-			i32(f64(game.tab_1.camera_vel.x) * game.tab_1.camera_zoom),
-			i32(f64(game.tab_1.camera_vel.y) * game.tab_1.camera_zoom),
+	camera_manager :: proc(game: ^Game_State) {
+		sum_velocity :=
+			game.tab_1.camera_vel.x * game.tab_1.camera_vel.x +
+			game.tab_1.camera_vel.y * game.tab_1.camera_vel.y
+		if (sum_velocity > 1) {
+			game.tab_1.camera += nl.Coord {
+				i32(f64(game.tab_1.camera_vel.x) * game.tab_1.camera_zoom),
+				i32(f64(game.tab_1.camera_vel.y) * game.tab_1.camera_zoom),
+			}
+			if !game.slide {
+				game.tab_1.camera_vel.x = i32(f64(game.tab_1.camera_vel.x) * 0.999)
+				game.tab_1.camera_vel.y = i32(f64(game.tab_1.camera_vel.y) * 0.999)
+			}
 		}
-		if !game.slide {
-			game.tab_1.camera_vel.x = i32(f64(game.tab_1.camera_vel.x) * 0.999)
-			game.tab_1.camera_vel.y = i32(f64(game.tab_1.camera_vel.y) * 0.999)
+	}
 
-		}
-
+	draw_town_background :: proc(window: nl.Window_Data) {
+		nl.draw_rectangle(nl.Coord{285, 0}, nl.Coord{10, 400}, window, rl.Color{33, 31, 50, 255})
+		rl.BeginBlendMode(rl.BlendMode.SUBTRACT_COLORS)
+		nl.draw_rectangle(
+			nl.Coord{295, 0},
+			nl.Coord{19, 13} * nl.Coord{32, 32},
+			window,
+			rl.Color{10, 10, 10, 255},
+		)
+		rl.EndBlendMode()
 
 	}
 
 	on_tile_pos: nl.Coord
-
+	draw_town_background(window = window^)
 	display_tiles(game, &on_tile_pos, shader, window, mouse)
-
-
+	camera_manager(game = game)
 	buildings_manager(on_tile_pos = on_tile_pos, game = game, window = window, mouse = mouse)
-
 	display_oidstat(game^, window)
 	print_coord_mouse(on_tile_pos, window^)
 	// display resources
@@ -494,9 +594,7 @@ process_inputs :: proc(game: ^Game_State) {
 				// zoom_a := game.tab_1.camera_zoom
 				// margin: [2]f64 = {605.0, 400.0} / {2, 2} * {zoom_a, zoom_a}
 				// game.tab_1.camera += {i32(margin.x), i32(margin.y)}
-
 			}
-
 		}}
 }
 
@@ -537,8 +635,20 @@ main :: proc() {
 		virtual_pos = nl.Coord{0, 0},
 		clicking    = false,
 	}
+	global_resources := Global_Data {
+		oid = od.bigfloat{0, 0},
+	}
+	global_resource_managers := Global_Resource {
+		oid = rsc.Resource_Manager {
+			output = &global_resources.oid,
+			base = make_slice([]od.bigfloat, 1),
+			multiplier = make_slice([]od.bigfloat, 0),
+			exponent = make_slice([]od.bigfloat, 0),
+      cached_income = od.bigfloat{0,0} 
+		},
+	}
 	game := Game_State {
-		global = Global_Data{oid = 1},
+		global = &global_resources,
 		tab_state = 1,
 		tab_1 = Game_Tab_1 {
 			hold = "",
@@ -548,56 +658,7 @@ main :: proc() {
 			camera_zoom_speed = 0.3,
 		},
 	}
-	gen_seed: i64 = 15124
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.7,
-		range = {0.15, 1},
-		set = 3,
-		seed = &gen_seed,
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.2,
-		range = {0.8, 1},
-		set = 1,
-		seed = &gen_seed,
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.1,
-		range = {0.15, 1},
-		set = 1,
-		seed = &gen_seed,
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.2,
-		range = {0.7, 0.8},
-		set = 1,
-		seed = &gen_seed,
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.2,
-		range = {0.4, 0.65},
-		set = 2,
-		seed = &gen_seed,
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.3,
-		range = {0.15, 0.4},
-		set = 2,
-		seed = &gen_seed,
-	)
-
+	generate_objects(&game)
 
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
 	defer rl.UnloadShader(shader)
@@ -606,31 +667,31 @@ main :: proc() {
 
 	for !rl.WindowShouldClose() {
 
+
 		if rl.IsWindowResized() {
 			window.present_size = nl.Coord{rl.GetScreenWidth(), rl.GetScreenHeight()}
-
 		}
 		process_inputs(&game)
 		nl.update_mouse(&mouse, window)
 
 		rl.BeginDrawing()
-
-		side_bar_tab(&window, mouse, &game)
-
-
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
 
-		frame += 1
-		animate_textures(window = &window, frame = frame)
+		side_bar_tab(&window, mouse, &game)
 		if (game.tab_state == 0) {
 			settings_tab(window = &window, mouse = mouse, game = &game)
 		} else if (game.tab_state == 1) {
 			town_tab(game = &game, window = &window, mouse = mouse, shader = shader)
 		}
 		rl.EndDrawing()
+		frame += 1
+		animate_textures(window = &window, frame = frame)
+    global(&game)
 	}
 	delete(window.image_cache_map)
 	delete(tile_data_NO_USE)
 	delete(game.tab_1.map_mesh.array)
-
+	delete(global_resource_managers.oid.base)
+	delete(global_resource_managers.oid.multiplier)
+	delete(global_resource_managers.oid.exponent)
 }

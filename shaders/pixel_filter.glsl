@@ -4,7 +4,7 @@ in vec2 fragTexCoord;
 
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
-uniform vec4 frgColor;
+uniform vec4 fragColor;
 
 out vec4 color;
 
