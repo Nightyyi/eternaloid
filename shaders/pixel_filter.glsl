@@ -1,10 +1,10 @@
 #version 330 
 
 in vec2 fragTexCoord;
+in vec4 fragColor;
 
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
-uniform vec4 fragColor;
 
 out vec4 color;
 

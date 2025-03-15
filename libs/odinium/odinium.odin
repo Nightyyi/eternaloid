@@ -9,7 +9,6 @@ bigfloat :: struct {
 }
 
 normalize :: proc(number: bigfloat) -> bigfloat {
-	fmt.print("sus")
 	mantissa := number.mantissa
 	exponent := number.exponent
 	if mantissa != 0 {
@@ -32,12 +31,8 @@ negate :: proc(x: bigfloat) -> bigfloat {
 }
 
 add :: proc(x, y: bigfloat) -> bigfloat {
-	fmt.print(" oh no")
-	fmt.println(x, y)
 	exp_difference := f64(x.exponent - y.exponent)
 	new_mantissa: f64
-	fmt.print(" oh no")
-	fmt.println(exp_difference)
 	switch {
 	case exp_difference > 0:
 		//ex: runs if _e5 > _e3
@@ -50,7 +45,6 @@ add :: proc(x, y: bigfloat) -> bigfloat {
 		break
 	case exp_difference == 0:
 		//ex: runs if _e3 == _e3
-		fmt.print("sus")
 		new_mantissa = x.mantissa + y.mantissa
 		break
 	}

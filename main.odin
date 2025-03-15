@@ -132,9 +132,9 @@ check_can_draw :: proc(
 		draw = false}
 	if (position.y + i32(32 * size)) < 0 {
 		draw = false}
-	if (position.x + i32(32 * size)) > window.original_size.x {
+	if (position.x) > window.original_size.x {
 		draw = false}
-	if (position.y + i32(32 * size)) > window.original_size.y {
+	if (position.y) > window.original_size.y {
 		draw = false}
 	return draw
 }
@@ -154,12 +154,12 @@ global :: proc(game: ^Game_State) {
 		game.global.entities = count_entities(game)
 		rsc.update_resource(
 			&game.global_m.oid,
-			od.bigfloat{f64(game.global.entities[3]), 0},
+			od.bigfloat{f64(game.global.entities[4]), 0},
 			0,
 			rsc.Boost_Type.base,
 		)
 		game.events.update_town = false
-    fmt.println(f64(game.global.entities[3]))
+		fmt.println(f64(game.global.entities[4]))
 	}
 
 	rsc.run_resource_manager(&game.global_m.oid)
@@ -385,7 +385,6 @@ set_town :: proc(game: ^Game_State, tile: nl.Coord, mouse: nl.Mouse_Data) {
 	if (mouse.clicking) {
 		if (game.tab_1.hold != "") {
 			tile_index: i32 = game.tab_1.map_mesh.size.x * tile.y + tile.x
-			fmt.println(tile_index)
 			game.tab_1.tile_data[tile_index] = game.tab_1.hold_t
 			game.tab_1.hold = ""
 			game.tab_1.hold_t = -1
@@ -644,11 +643,12 @@ main :: proc() {
 			base = make_slice([]od.bigfloat, 1),
 			multiplier = make_slice([]od.bigfloat, 0),
 			exponent = make_slice([]od.bigfloat, 0),
-      cached_income = od.bigfloat{0,0} 
+			cached_income = od.bigfloat{0, 0},
 		},
 	}
 	game := Game_State {
 		global = &global_resources,
+		global_m = global_resource_managers,
 		tab_state = 1,
 		tab_1 = Game_Tab_1 {
 			hold = "",
@@ -686,7 +686,7 @@ main :: proc() {
 		rl.EndDrawing()
 		frame += 1
 		animate_textures(window = &window, frame = frame)
-    global(&game)
+		global(&game)
 	}
 	delete(window.image_cache_map)
 	delete(tile_data_NO_USE)
@@ -694,4 +694,5 @@ main :: proc() {
 	delete(global_resource_managers.oid.base)
 	delete(global_resource_managers.oid.multiplier)
 	delete(global_resource_managers.oid.exponent)
+	delete(game.global.entities)
 }

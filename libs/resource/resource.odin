@@ -35,30 +35,24 @@ create_resource_manager :: proc(
 }
 
 run_resource_manager :: proc(manager: ^Resource_Manager) {
-  fmt.println(manager)
   accumilator : od.bigfloat= od.bigfloat{0, 0}
 	if manager.update {
 
-    fmt.print("1")
 		for i in 0 ..< len(manager.base) {
-			accumilator = od.add(accumilator, manager.base[i])
+      accumilator = od.add(accumilator, manager.base[i])
 		}
-    fmt.print("1")
 		for i in 0 ..< len(manager.multiplier) {
 			multiplier := od.add(manager.multiplier[i], od.bigfloat{1, 0})
 			accumilator = od.mul(accumilator, multiplier)
 		}
-    fmt.print("1")
 
-		for i in 0 ..< len(manager.base) {
+		for i in 0 ..< len(manager.exponent) {
 			exponent := od.add(manager.exponent[i], od.bigfloat{1, 0})
 			accumilator = od.add(accumilator, exponent)
 		}
-    fmt.print("1")
 		manager.cached_income = accumilator
 		manager.update = false
 	}
-  fmt.print("1")
 	manager.output^ = od.add(manager.output^, manager.cached_income)
 }
 
