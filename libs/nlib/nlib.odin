@@ -11,6 +11,7 @@ Mouse_Data :: struct {
 	pos:         Coord,
 	virtual_pos: Coord,
 	clicking:    bool,
+	hold:    bool,
 }
 
 Window_Data :: struct {
@@ -79,6 +80,7 @@ update_mouse :: proc(mouse: ^Mouse_Data, window: Window_Data) {
 	}
 	mouse.virtual_pos = Coord{i32(pos.x), i32(pos.y)}
 	mouse.clicking = rl.IsMouseButtonPressed(rl.MouseButton.LEFT)
+	mouse.hold = rl.IsMouseButtonDown(rl.MouseButton.LEFT)
 }
 
 acquire_texture :: proc(image_name: string) -> rl.Texture {

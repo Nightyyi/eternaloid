@@ -113,3 +113,152 @@ pow_bfbf :: proc(x, y: bigfloat) -> bigfloat {
 
 	return bigfloat{mantissa = new_mantissa, exponent = i128(new_exponent + 0.01)}
 }
+
+gt_than :: proc(x, y: bigfloat) -> bool {
+	selfSign: bool = x.mantissa > 0
+	anotherSign: bool = y.mantissa > 0
+
+	if (selfSign == anotherSign) {
+		if !selfSign {
+			if (x.exponent < y.exponent) {
+				return true
+			} else if (x.exponent > y.exponent) {
+				return false
+			} else {
+				if (x.mantissa < y.mantissa) {
+					return true
+				} else if (x.mantissa > y.mantissa) {
+					return false
+				} else {return false}
+			}
+		} else {
+			if (x.exponent < y.exponent) {
+				return false
+			} else if (x.exponent > y.exponent) {
+				return true
+			} else {
+				if (x.mantissa < y.mantissa) {
+					return false
+				} else if (x.mantissa > y.mantissa) {
+					return true
+				} else {return false}
+			}
+		}
+	} else {
+		if (selfSign) {return true} else {return false}
+	}
+}
+
+ls_than :: proc(x, y: bigfloat) -> bool {
+	selfSign: bool = x.mantissa > 0
+	anotherSign: bool = y.mantissa > 0
+
+	if (selfSign == anotherSign) {
+		if !selfSign {
+			if (x.exponent < y.exponent) {
+				return false
+			} else if (x.exponent > y.exponent) {
+				return true
+			} else {
+				if (x.mantissa < y.mantissa) {
+					return false
+				} else if (x.mantissa > y.mantissa) {
+					return true
+				} else {return false}
+			}
+		} else {
+			if (x.exponent < y.exponent) {
+				return true
+			} else if (x.exponent > y.exponent) {
+				return false
+			} else {
+				if (x.mantissa < y.mantissa) {
+					return true
+				} else if (x.mantissa > y.mantissa) {
+					return false
+				} else {return false}
+			}
+		}
+	} else {
+		if (selfSign) {return false} else {return true}
+	}
+}
+
+gt__eq :: proc(x, y: bigfloat) -> bool {
+	selfSign: bool = x.mantissa > 0
+	anotherSign: bool = y.mantissa > 0
+
+	if (selfSign == anotherSign) {
+		if !selfSign {
+			if (x.exponent < y.exponent) {
+				return true
+			} else if (x.exponent > y.exponent) {
+				return false
+			} else {
+				if (x.mantissa < y.mantissa) {
+					return true
+				} else if (x.mantissa > y.mantissa) {
+					return false
+				} else {return true}
+			}
+		} else {
+			if (x.exponent < y.exponent) {
+				return false
+			} else if (x.exponent > y.exponent) {
+				return true
+			} else {
+				if (x.mantissa < y.mantissa) {
+					return false
+				} else if (x.mantissa > y.mantissa) {
+					return true
+				} else {return true}
+			}
+		}
+	} else {
+		if (selfSign) {return true} else {return false}
+	}
+}
+
+ls__eq :: proc(x, y: bigfloat) -> bool {
+	selfSign: bool = x.mantissa > 0
+	anotherSign: bool = y.mantissa > 0
+
+	if (selfSign == anotherSign) {
+		if !selfSign {
+			if (x.exponent < y.exponent) {
+				return false
+			} else if (x.exponent > y.exponent) {
+				return true
+			} else {
+				if (x.mantissa < y.mantissa) {
+					return false
+				} else if (x.mantissa > y.mantissa) {
+					return true
+				} else {return true}
+			}
+		} else {
+			if (x.exponent < y.exponent) {
+				return true
+			} else if (x.exponent > y.exponent) {
+				return false
+			} else {
+				if (x.mantissa < y.mantissa) {
+					return true
+				} else if (x.mantissa > y.mantissa) {
+					return true
+				} else {return false}
+			}
+		}
+	} else {
+		if (selfSign) {return false} else {return true}
+	}
+}
+
+
+equals :: proc(x, y: bigfloat) -> bool {
+	if x.exponent == y.exponent && x.mantissa == y.mantissa {return true} else {return false}
+}
+
+noteql :: proc(x, y: bigfloat) -> bool {
+	if x.exponent == y.exponent && x.mantissa == y.mantissa {return false} else {return true}
+}

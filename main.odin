@@ -20,7 +20,10 @@ Game_State :: struct {
 	tab_state: i32,
 	tab_1:     Game_Tab_1,
 	slide:     bool,
+	seed:      i64,
+	frame:     i128,
 }
+
 
 Global_Data :: struct {
 	entities: []i32,
@@ -37,19 +40,22 @@ Events :: struct {
 }
 
 Game_Tab_1 :: struct {
-	camera:            nl.Coord,
-	camera_vel:        nl.Coord,
-	camera_zoom:       f64,
-	camera_zoom_speed: f64,
-	hold:              string,
-	hold_t:            i32,
-	tile_data:         []i32,
-	buildings_data:    []i32,
-	mass:              ^map[[2]i32][2]i32,
-	fog_data:          []i32,
-	map_mesh:          rg.mesh,
-	dev_see:           bool,
-	dev_elevation:     bool,
+	camera:             nl.Coord,
+	camera_real:        nl.Coord,
+	camera_vel:         nl.Coord,
+	camera_zoom:        f64,
+	camera_zoom_speed:  f64,
+	hold:               string,
+	hold_t:             i32,
+	tile_data:          []i32,
+	buildings_data:     []i32,
+	building_area_data: []i32,
+	continent_sizes:    [dynamic]map[[2]i32][2]i32,
+	fog_data:           []i32,
+	test_data:          ^map[[2]i32]bool,
+	map_mesh:           rg.mesh,
+	dev_see:            bool,
+	dev_elevation:      bool,
 }
 
 // settings tab
@@ -93,9 +99,9 @@ check_can_draw :: proc(
 	window: nl.Window_Data,
 ) -> bool {
 	draw := true
-	if (position.x + i32(32 * size)) < offset.x {
+	if (f64(position.x) + f64(32 * size) < f64(295)) {
 		draw = false}
-	if (position.y + i32(32 * size)) < 0 {
+	if (f64(position.y) + f64(32 * size) < f64(0)) {
 		draw = false}
 	if (position.x) > window.original_size.x {
 		draw = false}
@@ -106,9 +112,57 @@ check_can_draw :: proc(
 
 global :: proc(game: ^Game_State) {
 
+	cost_building :: proc(building_type: i32) -> (cost: od.bigfloat) {
+		cost = od.bigfloat{1, 1000}
+		if (building_type == 1) {
+			cost = od.bigfloat{2.5, 2}
+		}
+		if (building_type == 2) {
+			cost = od.bigfloat{2.5, 2}
+		}
+		return
+	}
+
+	buy_building :: proc(
+		building_type: i32,
+		game: ^Game_State,
+		resource: ^od.bigfloat,
+		index: int,
+	) {
+		cost := cost_building(building_type)
+		if od.ls__eq(cost, resource^) {
+			game.tab_1.buildings_data[index] = building_type
+			resource^ = od.sub(resource^, cost)
+			game.events.update_town = true
+		}
+	}
+
+	update_building_area :: proc(game: ^Game_State) {
+		if (game.frame % 60 == 0) {
+			for building_type, index in game.tab_1.building_area_data {
+				if building_type != 0 {
+					building := game.tab_1.buildings_data[index]
+
+					if building != building_type {
+						buy_building(
+							building_type = building_type,
+							game = game,
+							resource = &game.global.oid,
+							index = index,
+						)
+            if building_type == 2{
+              game.events.update_fog = true
+            }
+					}
+
+				}
+			}
+		}
+	}
+
 	count_entities :: proc(game: ^Game_State) -> []i32 {
 		list_entities := make_slice([]i32, 8)
-		for i in game.tab_1.tile_data {
+		for i in game.tab_1.buildings_data {
 			list_entities[i] += 1
 		}
 		return list_entities
@@ -119,16 +173,42 @@ global :: proc(game: ^Game_State) {
 		game.global.entities = count_entities(game)
 		rsc.update_resource(
 			&game.global_m.oid,
-			od.bigfloat{f64(game.global.entities[4]), 0},
+			od.bigfloat{f64(game.global.entities[1]), 0},
 			0,
 			rsc.Boost_Type.base,
 		)
 		game.events.update_town = false
-		fmt.println(f64(game.global.entities[4]))
+		fmt.println(f64(game.global.entities[1]))
 	}
 
 	rsc.run_resource_manager(&game.global_m.oid)
+	update_building_area(game)
+}
 
+generate_spawn :: proc(game: ^Game_State) {
+	biggest_val := 0
+	biggest_index := 0
+	for continent, index in game.tab_1.continent_sizes {
+		if len(continent) > biggest_val {
+			biggest_val = len(continent)
+			biggest_index = index
+		}
+	}
+	run := true
+	i := 1.5
+	for run {
+		x := i32(((rg.random_num(&i) + 1) / 2) * 300)
+		y := i32(((rg.random_num(&i) + 1) / 2) * 300)
+		val, ok := (game.tab_1.continent_sizes[biggest_index])[nl.Coord{x, y}]
+		if ok {
+			run = false
+			game.tab_1.building_area_data[x + y * game.tab_1.map_mesh.size.x] = 2
+
+			game.tab_1.camera_real -= nl.Coord{x * 32 - 320, y * 32 - 320}
+			fmt.print(game.tab_1.camera)
+		}
+	}
+	game.events.update_fog = true
 }
 
 
@@ -139,6 +219,7 @@ draw_all_tiles :: proc(
 	textures_natural: [$P]string,
 	textures_buildings: [$L]string,
 	tile_set: [8]rl.Color,
+	buildings_a_set: [8]rl.Color,
 	max: nl.Coord,
 	offset: nl.Coord,
 	tilesize: i32,
@@ -230,10 +311,12 @@ draw_all_tiles :: proc(
 		textures_natural: [$P]string,
 		textures_buildings: [$L]string,
 		tile_set: [8]rl.Color,
+		buildings_a_set: [8]rl.Color,
 		highlighted: ^nl.Coord,
 	) {
 		val := altitude[x + y * max.x]
 		fog_tile := game.tab_1.fog_data[x + y * max.x]
+		building_area := game.tab_1.building_area_data[x + y * max.x]
 		raised := false
 		valinfront: f64 = 100
 		if (y + 1 < max.y) {
@@ -248,15 +331,22 @@ draw_all_tiles :: proc(
 			elevation = 1
 		}
 		position := nl.Coord {
-			i32(f64(x * tilesize) * size) + offset.x,
-			i32((f64(y * tilesize) - f64(elevation)) * size) + offset.y,
+			i32(f64(x * tilesize + offset.x) * size),
+			i32((f64(y * tilesize + offset.y) - f64(elevation)) * size),
 		}
 
-		draw := check_can_draw(position = position, size = size, offset = offset, window = window^)
+		draw := check_can_draw(
+			position = position,
+			size = size,
+			offset = {game.tab_1.camera.x, game.tab_1.camera.y},
+			window = window^,
+		)
 
 		if draw {
-
 			color_tile := tile_set[int(val * 8)]
+			if building_area > 0 {
+				color_tile += buildings_a_set[building_area]
+			}
 			color_edge := multiply_color(0.6, color_tile)
 
 			smooth_water(val, &color_tile, tile_set)
@@ -264,11 +354,6 @@ draw_all_tiles :: proc(
 				color_tile = multiply_color(0.5, color_tile)
 				color_edge = multiply_color(0.5, color_tile)
 			} else {
-				elem, ok := game.tab_1.mass[nl.Coord{x, y}]
-				if ok {
-          color_tile = multiply_color(3, color_tile)
-      
-				}
 			}
 
 			draw_background_tile(
@@ -344,6 +429,7 @@ draw_all_tiles :: proc(
 				textures_natural = textures_natural,
 				textures_buildings = textures_buildings,
 				tile_set = tile_set,
+				buildings_a_set = buildings_a_set,
 				max = max,
 				window = window,
 				mouse = mouse,
@@ -359,16 +445,7 @@ generate_objects :: proc(game: ^Game_State) {
 	rg.generate_objects_i32(
 		mesh = game.tab_1.map_mesh,
 		array = &game.tab_1.tile_data,
-		percentage = 0.7,
-		range = {0.15, 1},
-		set = 3,
-		seed = &gen_seed,
-		target = nl.Coord{1, 8},
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.2,
+		percentage = 0.25,
 		range = {0.8, 1},
 		set = 1,
 		seed = &gen_seed,
@@ -378,35 +455,26 @@ generate_objects :: proc(game: ^Game_State) {
 		mesh = game.tab_1.map_mesh,
 		array = &game.tab_1.tile_data,
 		percentage = 0.1,
+		range = {0.25, .8},
+		set = 1,
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.7,
 		range = {0.15, 1},
-		set = 1,
-		seed = &gen_seed,
-		target = nl.Coord{1, 8},
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.2,
-		range = {0.7, 0.8},
-		set = 1,
-		seed = &gen_seed,
-		target = nl.Coord{1, 8},
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.2,
-		range = {0.4, 0.65},
 		set = 2,
 		seed = &gen_seed,
 		target = nl.Coord{1, 8},
 	)
-	rg.generate_objects_i32(
+	rg.generate_objects_list_i32(
 		mesh = game.tab_1.map_mesh,
 		array = &game.tab_1.tile_data,
-		percentage = 0.3,
-		range = {0.15, 0.4},
-		set = 2,
+		percentage = 0.4,
+		range = {0.25, 0.8},
+		set = [?]i32{2, 3, 4, 5, 6},
 		seed = &gen_seed,
 		target = nl.Coord{1, 8},
 	)
@@ -460,14 +528,12 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 }
 
 set_town :: proc(game: ^Game_State, tile: nl.Coord, mouse: nl.Mouse_Data) {
-	if (mouse.clicking) {
-		if (game.tab_1.hold != "") {
+	if (mouse.hold) {
+    ok := bool(game.tab_1.fog_data[tile.x + tile.y * game.tab_1.map_mesh.size.x])
+		if (game.tab_1.hold != "") && ok {
 			tile_index: i32 = game.tab_1.map_mesh.size.x * tile.y + tile.x
-			game.tab_1.buildings_data[tile_index] = game.tab_1.hold_t
+			game.tab_1.building_area_data[tile_index] = game.tab_1.hold_t
 			game.events.update_fog = true
-			game.tab_1.hold = ""
-			game.tab_1.hold_t = -1
-			game.events.update_town = true
 		}}
 }
 
@@ -477,6 +543,7 @@ town_tab :: proc(
 	mouse: nl.Mouse_Data,
 	shader: rl.Shader,
 ) {
+
 
 	update_fog :: proc(game: ^Game_State) {
 		fog_kernel :: proc(
@@ -506,7 +573,6 @@ town_tab :: proc(
 		if game.events.update_fog {
 			game.events.update_fog = false
 			mesh_max := game.tab_1.map_mesh.size
-			fmt.print("meow")
 			for y in 0 ..< mesh_max.y {
 				for x in 0 ..< mesh_max.x {
 					building := game.tab_1.buildings_data[x + y * mesh_max.x]
@@ -592,12 +658,11 @@ town_tab :: proc(
 		tile_set_natural := [?]string {
 			"",
 			"boulders.png",
+			"grass.png",
 			"tree1.png",
 			"tree2.png",
 			"tree3.png",
-			"tree4.png",
 			"tree5.png",
-			"grass.png",
 		}
 		tile_set_buildings := [?]string{"", "house_lv0.png", "tower.png"}
 		offset_tiles := nl.Coord{295, 0} + game.tab_1.camera
@@ -608,6 +673,16 @@ town_tab :: proc(
 				tile_data = game.tab_1.tile_data,
 				altitude = game.tab_1.map_mesh.array,
 				tile_set = {
+					rl.Color{25, 25, 35, 255},
+					rl.Color{25, 25, 125, 255},
+					rl.Color{25, 65, 25, 255},
+					rl.Color{25, 75, 45, 255},
+					rl.Color{85, 125, 85, 255},
+					rl.Color{105, 105, 85, 255},
+					rl.Color{125, 125, 125, 255},
+					rl.Color{165, 165, 165, 255},
+				},
+				buildings_a_set = {
 					rl.Color{25, 25, 35, 255},
 					rl.Color{25, 25, 125, 255},
 					rl.Color{25, 65, 25, 255},
@@ -637,7 +712,7 @@ town_tab :: proc(
 			game.tab_1.camera_vel.x * game.tab_1.camera_vel.x +
 			game.tab_1.camera_vel.y * game.tab_1.camera_vel.y
 		if (sum_velocity > 1) {
-			game.tab_1.camera += nl.Coord {
+			game.tab_1.camera_real += nl.Coord {
 				i32(f64(game.tab_1.camera_vel.x) * game.tab_1.camera_zoom),
 				i32(f64(game.tab_1.camera_vel.y) * game.tab_1.camera_zoom),
 			}
@@ -645,6 +720,10 @@ town_tab :: proc(
 				game.tab_1.camera_vel.x = i32(f64(game.tab_1.camera_vel.x) * 0.999)
 				game.tab_1.camera_vel.y = i32(f64(game.tab_1.camera_vel.y) * 0.999)
 			}
+		}
+		game.tab_1.camera = nl.Coord {
+			i32(f64(game.tab_1.camera_real.x) - (605.0 - 605.0 / game.tab_1.camera_zoom)),
+			i32(f64(game.tab_1.camera_real.y) - (400.0 - 400.0 / game.tab_1.camera_zoom) / 2),
 		}
 	}
 
@@ -662,10 +741,10 @@ town_tab :: proc(
 	}
 
 	on_tile_pos: nl.Coord
+	camera_manager(game = game)
 	update_fog(game)
 	draw_town_background(window = window^)
 	display_tiles(game, &on_tile_pos, shader, window, mouse)
-	camera_manager(game = game)
 	display_oidstat(game^, window)
 	buildings_manager(on_tile_pos = on_tile_pos, game = game, window = window, mouse = mouse)
 	print_coord_mouse(on_tile_pos, window^)
@@ -719,12 +798,12 @@ process_inputs :: proc(game: ^Game_State) {
 			resize = resize * 0.05 * game.tab_1.camera_zoom_speed * 3
 			old_z: f64
 			if (resize < 0) {
-				game.tab_1.camera_zoom *= 2
+				game.tab_1.camera_zoom *= (-resize) + 1
 				// zoom_a := game.tab_1.camera_zoom
 				// margin: [2]f64 = {605.0, 400.0} / {4, 4} * {zoom_a, zoom_a}
 				// game.tab_1.camera -= {i32(margin.x), i32(margin.y)}
 			} else {
-				game.tab_1.camera_zoom /= 2
+				game.tab_1.camera_zoom /= resize + 1
 				// zoom_a := game.tab_1.camera_zoom
 				// margin: [2]f64 = {605.0, 400.0} / {2, 2} * {zoom_a, zoom_a}
 				// game.tab_1.camera += {i32(margin.x), i32(margin.y)}
@@ -771,7 +850,7 @@ main :: proc() {
 
 
 	global_resources := Global_Data {
-		oid = od.bigfloat{0, 0},
+		oid = od.bigfloat{5, 3},
 	}
 	global_resource_managers := Global_Resource {
 		oid = rsc.Resource_Manager {
@@ -793,19 +872,41 @@ main :: proc() {
 			tile_data = make_slice([]i32, 300 * 300),
 			fog_data = make_slice([]i32, 300 * 300),
 			buildings_data = make_slice([]i32, 300 * 300),
+			building_area_data = make_slice([]i32, 300 * 300),
 			map_mesh = rg.create_mesh_custom({300, 300}, 300, 2151232),
+			continent_sizes = make([dynamic]map[[2]i32][2]i32),
 			camera_zoom = 1,
 			camera_zoom_speed = 0.3,
 		},
 	}
 	generate_objects(&game)
 
-	highlighted_bfd := rg.bfd(nl.Coord{52, 32}, game.tab_1.map_mesh, 0.25)
-	game.tab_1.mass = &highlighted_bfd
+	global_map := make(map[[2]i32]bool)
+	for y in 0 ..< game.tab_1.map_mesh.size.y {
+		for x in 0 ..< game.tab_1.map_mesh.size.x {
+			valid, ok := global_map[nl.Coord{x, y}]
+			if !ok {
+				highlighted_bfd, okm := rg.bfd(
+					&global_map,
+					nl.Coord{x, y},
+					game.tab_1.map_mesh,
+					0.25,
+				)
+				if okm {
+					append(&game.tab_1.continent_sizes, highlighted_bfd)
+				}
+			}
+
+		}
+
+	}
+
+	generate_spawn(&game)
+
+	game.tab_1.test_data = &global_map
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
 	defer rl.UnloadShader(shader)
 
-	frame: i128 = 0
 
 	for !rl.WindowShouldClose() {
 
@@ -826,18 +927,24 @@ main :: proc() {
 			town_tab(game = &game, window = &window, mouse = mouse, shader = shader)
 		}
 		rl.EndDrawing()
-		frame += 1
-		animate_textures(window = &window, frame = frame)
+		animate_textures(window = &window, frame = game.frame)
 		global(&game)
+		game.frame += 1
 	}
 	delete(window.image_cache_map)
 	delete(game.tab_1.tile_data)
 	delete(game.tab_1.buildings_data)
+	delete(game.tab_1.building_area_data)
 	delete(game.tab_1.fog_data)
 	delete(game.tab_1.map_mesh.array)
 	delete(global_resource_managers.oid.base)
 	delete(global_resource_managers.oid.multiplier)
 	delete(global_resource_managers.oid.exponent)
 	delete(game.global.entities)
-	delete(game.tab_1.mass^)
+	for continent in game.tab_1.continent_sizes {
+		delete(continent)
+	}
+	delete(game.tab_1.continent_sizes)
+	delete(global_map)
+
 }

@@ -24,8 +24,15 @@ fractal_noise :: proc(pos: [2]i32, iterations: i32, zoom: f64, seed: i64) -> f32
 	return val_sum / m
 }
 
+random_num :: proc(seed: ^f64) -> f64{
+  new_seed := f64(noise.noise_2d(i64(seed^*10000), {f64(seed^*2),0}))
+  seed^ = new_seed
+  return new_seed
 
-bfd :: proc(pos: [2]i32, mesh: mesh, min: f64) -> map[[2]i32][2]i32 {
+}
+
+
+bfd :: proc(globalmap: ^map[[2]i32]bool,pos: [2]i32, mesh: mesh, min: f64) -> (map[[2]i32][2]i32, bool) {
 	check_in :: proc(pos: [2]i32, min, max: i32, output: map[[2]i32][2]i32) -> bool {
 		out := true
 		if pos.x < min {out = false}
@@ -52,7 +59,7 @@ bfd :: proc(pos: [2]i32, mesh: mesh, min: f64) -> map[[2]i32][2]i32 {
 		if check_in(a, min, max, output) {append(queue, a)}
 		if check_in(b, min, max, output) {append(queue, b)}
 		if check_in(c, min, max, output) {append(queue, c)}
-		if check_in(c, min, max, output) {append(queue, d)}
+		if check_in(d, min, max, output) {append(queue, d)}
 		a = [2]i32{x_1, y_1}
 		b = [2]i32{x_1, y_2}
 		c = [2]i32{x_2, y_1}
@@ -61,26 +68,33 @@ bfd :: proc(pos: [2]i32, mesh: mesh, min: f64) -> map[[2]i32][2]i32 {
 		if check_in(b, min, max, output) {append(queue, b)}
 		if check_in(c, min, max, output) {append(queue, c)}
 		if check_in(d, min, max, output) {append(queue, d)}
-
 	}
-	output := make(map[[2]i32][2]i32)
-	queue := make([dynamic][2]i32)
-	append(&queue, pos)
-	run := true
-	for run {
-		pos, ok := pop_safe(&queue)
-		if !ok {
-			run = false
-		} else {
-			value_pos := mesh.array[pos.x + pos.y * mesh.size.x]
-			if value_pos > min {
-				output[pos] = pos
-				add_neighbours(output, &queue, pos, 0, mesh.size.x)
+
+
+	if min < mesh.array[pos.x + pos.y * mesh.size.x] {
+
+		output := make(map[[2]i32][2]i32)
+		queue := make([dynamic][2]i32)
+		append(&queue, pos)
+		run := true
+		for run {
+			pos, ok := pop_safe(&queue)
+			if !ok {
+				run = false
+			} else if ((pos.x + pos.y * mesh.size.x) < mesh.size.x * mesh.size.y) {
+				value_pos := mesh.array[pos.x + pos.y * mesh.size.x]
+				if value_pos > min {
+					output[pos] = pos
+          globalmap^[pos] = true
+					add_neighbours(output, &queue, pos, 0, mesh.size.x)
+				}
 			}
 		}
+		delete(queue)
+		return output, true
+	} else {
+		return nil, false
 	}
-	delete(queue)
-	return output
 }
 
 generate_objects_list_i32 :: proc(
@@ -100,6 +114,7 @@ generate_objects_list_i32 :: proc(
 			range = range,
 			set = x,
 			target = target,
+      seed= seed,
 		)
 	}
 }
