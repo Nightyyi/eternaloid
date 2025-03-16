@@ -30,6 +30,12 @@ Texture_Cache :: struct {
 	size:           f32,
 }
 
+clamp_Coord :: proc(val: ^Coord,min: Coord, max: Coord){
+  if val^.x < min.x{ val^.x = min.x}
+  if val^.y < min.y{ val^.y = min.y}
+  if val^.x > max.x{ val^.x = max.x}
+  if val^.y > max.y{ val^.x = max.y}
+}
 
 get_virtual_window :: proc(window: Window_Data) -> (Coord, f64) {
 	width_ratio := f64(window.present_size.x) / f64(window.original_size.x)
@@ -88,7 +94,7 @@ switch_texture :: proc(
 	original_image_name: string,
 	new_image_name: string,
 	image_cache_map: ^map[string]rl.Texture,
-)  {
+) {
 	cached_texture, ok := image_cache_map[new_image_name]
 	if ok {
 		image_cache_map[original_image_name] = cached_texture
@@ -117,7 +123,7 @@ pull_texture :: proc(
 in_hitbox :: proc(pos: Coord, size: Coord, mouse: Mouse_Data) -> bool {
 	delta := mouse.pos - pos
 	return (0 < delta.x && delta.x < size.x) && (0 < delta.y && delta.y < size.y)
-  
+
 
 }
 
@@ -170,32 +176,33 @@ draw_slider :: proc(
 ) {
 	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window)
 
-  if in_hitbox(position,size,mouse) && mouse.clicking{
-    slider_percentage^ = f64(mouse.pos.x-position.x) / f64(size.x)
-  }
+	if in_hitbox(position, size, mouse) && mouse.clicking {
+		slider_percentage^ = f64(mouse.pos.x - position.x) / f64(size.x)
+	}
 	rl.DrawRectangle(
 		i32(virtual_pos.x),
 		i32(virtual_pos.y),
 		i32(f64(size.x) * virtual_ratio),
 		i32(f64(size.y) * virtual_ratio),
-		rl.Color{50,50,50,105},
-  )
+		rl.Color{50, 50, 50, 105},
+	)
 	rl.DrawRectangle(
 		i32(virtual_pos.x),
 		i32(virtual_pos.y),
 		i32(f64(size.x) * virtual_ratio * slider_percentage^),
 		i32(f64(size.y) * virtual_ratio),
 		color,
-  )
+	)
 	rl.DrawRectangleLinesEx(
-    rl.Rectangle{
-    f32(virtual_pos.x),
-		f32(virtual_pos.y),
-		f32(f64(size.x) * virtual_ratio),
-		f32(f64(size.y) * virtual_ratio)},
-    2,
-		rl.Color{255,255,255,105},
-  )
+		rl.Rectangle {
+			f32(virtual_pos.x),
+			f32(virtual_pos.y),
+			f32(f64(size.x) * virtual_ratio),
+			f32(f64(size.y) * virtual_ratio),
+		},
+		2,
+		rl.Color{255, 255, 255, 105},
+	)
 }
 
 draw_png :: proc(
@@ -206,9 +213,9 @@ draw_png :: proc(
 	rotation: f32 = 0,
 	color: rl.Color = rl.Color{255, 255, 255, 255},
 ) {
-  draw := true
-  if (position.x > window.original_size.x){ draw = false}
-  if (position.y > window.original_size.y){ draw = false}
+	draw := true
+	if (position.x > window.original_size.x) {draw = false}
+	if (position.y > window.original_size.y) {draw = false}
 	if (png_name != "") {
 		texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
 		virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)

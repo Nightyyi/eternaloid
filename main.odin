@@ -1,13 +1,14 @@
 package rlib
 
+import rg "libs/gen"
 import nl "libs/nlib"
 import od "libs/odinium"
-import rg "libs/randgen"
 import rsc "libs/resource"
 import rl "vendor:raylib"
 
 import "core:encoding/json"
 import "core:fmt"
+import "core:math"
 import "core:mem"
 import "core:path/filepath"
 import "core:strings"
@@ -32,6 +33,7 @@ Global_Resource :: struct {
 
 Events :: struct {
 	update_town: bool,
+	update_fog:  bool,
 }
 
 Game_Tab_1 :: struct {
@@ -42,6 +44,9 @@ Game_Tab_1 :: struct {
 	hold:              string,
 	hold_t:            i32,
 	tile_data:         []i32,
+	buildings_data:    []i32,
+	mass:              ^map[[2]i32][2]i32,
+	fog_data:          []i32,
 	map_mesh:          rg.mesh,
 	dev_see:           bool,
 	dev_elevation:     bool,
@@ -68,46 +73,6 @@ settings_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_
 		color = rl.Color{150, 150, 150, 255},
 	)
 }
-
-// all town tab stuff
-tile_color_draw :: proc(
-	tile_data: $T,
-	tile_set: [8]rl.Color,
-	max: nl.Coord,
-	offset: nl.Coord,
-	tilesize: i32,
-	window: ^nl.Window_Data,
-	size: f64 = 1,
-	color: [3]i32,
-) {
-
-	pos := 0
-	for y in 0 ..< max.y {
-		for x in 0 ..< max.x {
-			position := nl.Coord {
-				i32(f64(x * tilesize) * size) + offset.x,
-				i32(f64(y * tilesize) * size) + offset.y,
-			}
-			val := tile_data[x + y * max.x]
-			draw := true
-			if (position.x + i32(32 * size)) < offset.x {
-				draw = false}
-			if (position.y + i32(32 * size)) < 0 {
-				draw = false}
-			if (position.x) > window.original_size.x {
-				draw = false}
-			if (position.y) > window.original_size.y {
-				draw = false}
-			if draw {
-
-				nl.draw_rectangle(
-					position = position,
-					size = nl.Coord{i32(32 * size) + 2, i32(32 * size) + 2},
-					window = window^,
-					color = tile_set[int(val * 8)],
-				)
-			}}
-	}}
 
 animate_textures :: proc(window: ^nl.Window_Data, frame: i128) {
 	grass := frame / 100 % 4
@@ -171,7 +136,8 @@ global :: proc(game: ^Game_State) {
 draw_all_tiles :: proc(
 	tile_data: $T,
 	altitude: $C,
-	textures: [$P]string,
+	textures_natural: [$P]string,
+	textures_buildings: [$L]string,
 	tile_set: [8]rl.Color,
 	max: nl.Coord,
 	offset: nl.Coord,
@@ -181,104 +147,208 @@ draw_all_tiles :: proc(
 	size: f64 = 1,
 	game: ^Game_State,
 ) -> nl.Coord {
-	highlighted := nl.Coord{-1, 0}
-	pos := 0
-	for y in 0 ..< max.y {
-		for x in 0 ..< max.x {
-			val := altitude[x + y * max.x]
-			raised := false
-			valinfront: f64 = 100
-			if (y + 1 < max.y) {
-				valinfront = altitude[x + (y + 1) * max.x]
+	multiply_color :: proc(n: f64, x: rl.Color) -> rl.Color {
+		return rl.Color{u8(n * f64(x.r)), u8(n * f64(x.g)), u8(n * f64(x.b)), u8(255)}}
+
+	draw_background_tile :: proc(
+		position: nl.Coord,
+		size: nl.Coord,
+		window: nl.Window_Data,
+		color: rl.Color,
+		mouse: nl.Mouse_Data,
+		highlighted: ^nl.Coord,
+		coord: nl.Coord,
+	) {
+		nl.draw_rectangle(position = position, size = size, window = window, color = color)
+		if nl.in_hitbox(pos = position, size = size, mouse = mouse) {highlighted^ = coord}
+	}
+
+	draw_edge :: proc(
+		valinfront: f64,
+		val: f64,
+		position: nl.Coord,
+		size: f64,
+		window: nl.Window_Data,
+		color: rl.Color,
+		mouse: nl.Mouse_Data,
+		highlighted: ^nl.Coord,
+		coord: nl.Coord,
+	) {
+		size_c := nl.Coord {
+			i32(32 * size) + 1,
+			i32(f64(i32(val * 8) - i32(valinfront * 8)) * 16 * size) + 1,
+		}
+		if i32(valinfront * 8) < i32(val * 8) {
+			elevated_pos := position
+			elevated_pos.y += i32(f64(32) * size)
+
+			if nl.in_hitbox(
+				pos = elevated_pos,
+				mouse = mouse,
+				size = size_c,
+			) {highlighted^ = coord}
+
+			nl.draw_rectangle(
+				position = elevated_pos,
+				size = nl.Coord {
+					i32(32 * size) + 1,
+					i32(f64(i32(val * 8) - i32(valinfront * 8)) * 16 * size) + 1,
+				},
+				window = window,
+				color = color,
+			)
+		}
+	}
+
+	smooth_water :: proc(val: f64, color_tile: ^rl.Color, tile_set: [8]rl.Color) {
+		val_f := f64(int(val * 40)) / 40
+		if (int(val * 8) == 1) {
+			color_tile2 := tile_set[0]
+			color_tile^ =
+				multiply_color(val_f * 4, color_tile^) +
+				multiply_color((1 - val_f * 4), color_tile2)
+		}
+		if (int(val * 8) == 0) {
+			color_tile2 := tile_set[1]
+			color_tile^ =
+				multiply_color(val_f * 4, color_tile2) +
+				multiply_color((1 - val_f * 4), color_tile^)
+		}
+	}
+
+	draw_single_tile :: proc(
+		x, y: i32,
+		game: ^Game_State,
+		size_c: nl.Coord,
+		altitude: $T,
+		window: ^nl.Window_Data,
+		mouse: nl.Mouse_Data,
+		tilesize: i32,
+		size: f64,
+		offset: nl.Coord,
+		max: nl.Coord,
+		textures_natural: [$P]string,
+		textures_buildings: [$L]string,
+		tile_set: [8]rl.Color,
+		highlighted: ^nl.Coord,
+	) {
+		val := altitude[x + y * max.x]
+		fog_tile := game.tab_1.fog_data[x + y * max.x]
+		raised := false
+		valinfront: f64 = 100
+		if (y + 1 < max.y) {
+			valinfront = altitude[x + (y + 1) * max.x]
+		}
+
+		elevation := i32(val * 8) * 16
+		if int(val * 8) < 1 {
+			elevation += 1 * 16
+		}
+		if game.tab_1.dev_elevation {
+			elevation = 1
+		}
+		position := nl.Coord {
+			i32(f64(x * tilesize) * size) + offset.x,
+			i32((f64(y * tilesize) - f64(elevation)) * size) + offset.y,
+		}
+
+		draw := check_can_draw(position = position, size = size, offset = offset, window = window^)
+
+		if draw {
+
+			color_tile := tile_set[int(val * 8)]
+			color_edge := multiply_color(0.6, color_tile)
+
+			smooth_water(val, &color_tile, tile_set)
+			if (fog_tile == 0) {
+				color_tile = multiply_color(0.5, color_tile)
+				color_edge = multiply_color(0.5, color_tile)
+			} else {
+				elem, ok := game.tab_1.mass[nl.Coord{x, y}]
+				if ok {
+          color_tile = multiply_color(3, color_tile)
+      
+				}
 			}
 
-			elevation := i32(val * 8) * 16
-			if int(val * 8) < 1 {
-				elevation += 1 * 16
-			}
-			if game.tab_1.dev_elevation {
-				elevation = 1
-			}
-			position := nl.Coord {
-				i32(f64(x * tilesize) * size) + offset.x,
-				i32((f64(y * tilesize) - f64(elevation)) * size) + offset.y,
-			}
-
-			draw := check_can_draw(
+			draw_background_tile(
+				position = position,
+				size = size_c,
+				window = window^,
+				color = color_tile,
+				mouse = mouse,
+				highlighted = highlighted,
+				coord = nl.Coord{x, y},
+			)
+			draw_edge(
+				valinfront = valinfront,
+				val = val,
 				position = position,
 				size = size,
-				offset = offset,
 				window = window^,
+				color = color_edge,
+				mouse = mouse,
+				highlighted = highlighted,
+				coord = nl.Coord{x, y},
 			)
-			if draw {
 
-				multiply_color :: proc(n: f64, x: rl.Color) -> rl.Color {
-					return rl.Color {
-						u8(n * f64(x.r)),
-						u8(n * f64(x.g)),
-						u8(n * f64(x.b)),
-						u8(n * f64(x.a)),
-					}}
-
-				color_tile := tile_set[int(val * 8)]
-				val_f := f64(int(val * 40)) / 40
-				if (int(val * 8) == 1) {
-					color_tile2 := tile_set[0]
-					color_tile =
-						multiply_color(val_f * 4, color_tile) +
-						multiply_color((1 - val_f * 4), color_tile2)
-				}
-				if (int(val * 8) == 0) {
-					color_tile2 := tile_set[1]
-					color_tile =
-						multiply_color(val_f * 4, color_tile2) +
-						multiply_color((1 - val_f * 4), color_tile)
-				}
+			if (nl.Coord{x, y} == highlighted^) {
 				nl.draw_rectangle(
 					position = position,
 					size = nl.Coord{i32(32 * size) + 1, i32(32 * size) + 1},
 					window = window^,
-					color = color_tile,
+					color = rl.Color{150, 150, 150, 100},
 				)
-				if nl.in_hitbox(
-					pos = position,
-					size = nl.Coord{i32(32 * size), i32(32 * size)},
-					mouse = mouse,
-				) {highlighted = nl.Coord{x, y}}
-				if i32(valinfront * 8) < i32(val * 8) {
-					elevated_pos := position
-					elevated_pos.y += i32(f64(tilesize) * size)
-					if nl.in_hitbox(
-						pos = elevated_pos,
-						size = nl.Coord{i32(32 * size), i32(16 * size)},
-						mouse = mouse,
-					) {highlighted = nl.Coord{x, y}}
-					nl.draw_rectangle(
-						position = elevated_pos,
-						size = nl.Coord{i32(32 * size) + 1, i32(16 * size) + 1},
-						window = window^,
-						color = rl.Color{25, 25, 25, 255},
-					)
-
-				}
-				if (nl.Coord{x, y} == highlighted) {
-					nl.draw_rectangle(
-						position = position,
-						size = nl.Coord{i32(32 * size), i32(32 * size)},
-						window = window^,
-						color = rl.Color{150, 150, 150, 100},
-					)
-				}
+			}
+			if fog_tile != 0 {
 				if i32(32 * size) > 4 {
-					nl.draw_png(
-						position = position,
-						png_name = textures[tile_data[y * max.x + x]],
-						window = window,
-						size = f32(2 * size),
-						color = rl.Color{255, 255, 255, 255},
-					)}
+					if (game.tab_1.buildings_data[y * max.x + x] == 0) {
+						nl.draw_png(
+							position = position,
+							png_name = textures_natural[game.tab_1.tile_data[y * max.x + x]],
+							window = window,
+							size = f32(2 * size),
+							color = rl.Color{255, 255, 255, 255},
+						)} else {
+						nl.draw_png(
+							position = position,
+							png_name = textures_buildings[game.tab_1.buildings_data[y * max.x + x]],
+							window = window,
+							size = f32(2 * size),
+							color = rl.Color{255, 255, 255, 255},
+						)
+					}
+				}
 
 			}
+
+		}
+	}
+
+
+	size_c := nl.Coord{i32(32 * size) + 1, i32(32 * size) + 1}
+
+	highlighted := nl.Coord{-1, 0}
+	pos := 0
+	for y in 0 ..< max.y {
+		for x in 0 ..< max.x {
+			draw_single_tile(
+				x = x,
+				y = y,
+				game = game,
+				size_c = size_c,
+				altitude = altitude,
+				tilesize = 32,
+				size = size,
+				offset = offset,
+				textures_natural = textures_natural,
+				textures_buildings = textures_buildings,
+				tile_set = tile_set,
+				max = max,
+				window = window,
+				mouse = mouse,
+				highlighted = &highlighted,
+			)
 		}
 	}
 	return highlighted
@@ -378,14 +448,23 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 		window = window,
 		mouse = mouse,
 		size = 2,
-	) {game.tab_1.hold = "house_lv0.png";game.tab_1.hold_t = 4}
+	) {game.tab_1.hold = "house_lv0.png";game.tab_1.hold_t = 1}
+	if nl.button_png_t(
+		position = nl.Coord{74, 300},
+		hitbox = nl.Coord{64, 64},
+		png_name = [3]string{"tower_bt_1.png", "tower_bt_2.png", "tower_bt_3.png"},
+		window = window,
+		mouse = mouse,
+		size = 2,
+	) {game.tab_1.hold = "tower.png";game.tab_1.hold_t = 2}
 }
 
 set_town :: proc(game: ^Game_State, tile: nl.Coord, mouse: nl.Mouse_Data) {
 	if (mouse.clicking) {
 		if (game.tab_1.hold != "") {
 			tile_index: i32 = game.tab_1.map_mesh.size.x * tile.y + tile.x
-			game.tab_1.tile_data[tile_index] = game.tab_1.hold_t
+			game.tab_1.buildings_data[tile_index] = game.tab_1.hold_t
+			game.events.update_fog = true
 			game.tab_1.hold = ""
 			game.tab_1.hold_t = -1
 			game.events.update_town = true
@@ -398,6 +477,59 @@ town_tab :: proc(
 	mouse: nl.Mouse_Data,
 	shader: rl.Shader,
 ) {
+
+	update_fog :: proc(game: ^Game_State) {
+		fog_kernel :: proc(
+			min: nl.Coord,
+			max: nl.Coord,
+			size: nl.Coord,
+			array: ^[]i32,
+			max_dist: i32,
+			set: i32,
+		) {
+			delta := max - min
+			center := (delta) / nl.Coord{2, 2}
+			for y in 0 ..< delta.y {
+				for x in 0 ..< delta.x {
+					pos := x + min.x + (y + min.y) * size.x
+					if pos > 0 && pos < size.x * size.y {
+						distance :=
+							(center.x - x) * (center.x - x) + (center.y - y) * (center.y - y)
+						if math.sqrt(f64(distance)) < f64(max_dist) {
+							array[pos] = set
+						}
+
+					}
+				}
+			}
+		}
+		if game.events.update_fog {
+			game.events.update_fog = false
+			mesh_max := game.tab_1.map_mesh.size
+			fmt.print("meow")
+			for y in 0 ..< mesh_max.y {
+				for x in 0 ..< mesh_max.x {
+					building := game.tab_1.buildings_data[x + y * mesh_max.x]
+					if building == 2 {
+						s: i32 = 10
+						min := nl.Coord{x - s, y - s}
+						max := nl.Coord{x + s, y + s}
+						fog_kernel(
+							min = min,
+							max = max,
+							size = mesh_max,
+							array = &game.tab_1.fog_data,
+							max_dist = s,
+							set = 1,
+						)
+					}
+				}
+			}
+
+		}
+	}
+
+
 	print_coord_mouse :: proc(on_tile_pos: nl.Coord, window: nl.Window_Data) {
 
 		buffer: [16]u8
@@ -457,16 +589,17 @@ town_tab :: proc(
 		window: ^nl.Window_Data,
 		mouse: nl.Mouse_Data,
 	) {
-		tile_set := [?]string {
+		tile_set_natural := [?]string {
 			"",
 			"boulders.png",
-			"tree.png",
+			"tree1.png",
+			"tree2.png",
+			"tree3.png",
+			"tree4.png",
+			"tree5.png",
 			"grass.png",
-			"house_lv0.png",
-			"house_lv1.png",
-			"house_lv2.png",
-			"house_lv3.png",
 		}
+		tile_set_buildings := [?]string{"", "house_lv0.png", "tower.png"}
 		offset_tiles := nl.Coord{295, 0} + game.tab_1.camera
 		if !game.tab_1.dev_see {
 			nl.begin_draw_area(nl.Coord{295, 0}, nl.Coord{19, 13} * nl.Coord{32, 32}, window^)
@@ -484,7 +617,8 @@ town_tab :: proc(
 					rl.Color{125, 125, 125, 255},
 					rl.Color{165, 165, 165, 255},
 				},
-				textures = tile_set,
+				textures_natural = tile_set_natural,
+				textures_buildings = tile_set_buildings,
 				max = nl.Coord{300, 300},
 				offset = offset_tiles,
 				tilesize = 32,
@@ -528,11 +662,12 @@ town_tab :: proc(
 	}
 
 	on_tile_pos: nl.Coord
+	update_fog(game)
 	draw_town_background(window = window^)
 	display_tiles(game, &on_tile_pos, shader, window, mouse)
 	camera_manager(game = game)
-	buildings_manager(on_tile_pos = on_tile_pos, game = game, window = window, mouse = mouse)
 	display_oidstat(game^, window)
+	buildings_manager(on_tile_pos = on_tile_pos, game = game, window = window, mouse = mouse)
 	print_coord_mouse(on_tile_pos, window^)
 	// display resources
 
@@ -622,7 +757,6 @@ main :: proc() {
 	rl.SetWindowState(rl.ConfigFlags{.WINDOW_RESIZABLE})
 	// rl.SetWindowState(rl.ConfigFlags{.WINDOW_ALWAYS_RUN})
 	set_icon()
-	tile_data_NO_USE: []i32 = make_slice([]i32, 300 * 300)
 	window := nl.Window_Data {
 		original_size   = nl.Coord{Screen_Width, Screen_Height},
 		present_size    = nl.Coord{Screen_Width, Screen_Height},
@@ -634,6 +768,8 @@ main :: proc() {
 		virtual_pos = nl.Coord{0, 0},
 		clicking    = false,
 	}
+
+
 	global_resources := Global_Data {
 		oid = od.bigfloat{0, 0},
 	}
@@ -646,13 +782,17 @@ main :: proc() {
 			cached_income = od.bigfloat{0, 0},
 		},
 	}
+
+
 	game := Game_State {
 		global = &global_resources,
 		global_m = global_resource_managers,
 		tab_state = 1,
 		tab_1 = Game_Tab_1 {
 			hold = "",
-			tile_data = tile_data_NO_USE,
+			tile_data = make_slice([]i32, 300 * 300),
+			fog_data = make_slice([]i32, 300 * 300),
+			buildings_data = make_slice([]i32, 300 * 300),
 			map_mesh = rg.create_mesh_custom({300, 300}, 300, 2151232),
 			camera_zoom = 1,
 			camera_zoom_speed = 0.3,
@@ -660,6 +800,8 @@ main :: proc() {
 	}
 	generate_objects(&game)
 
+	highlighted_bfd := rg.bfd(nl.Coord{52, 32}, game.tab_1.map_mesh, 0.25)
+	game.tab_1.mass = &highlighted_bfd
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
 	defer rl.UnloadShader(shader)
 
@@ -689,10 +831,13 @@ main :: proc() {
 		global(&game)
 	}
 	delete(window.image_cache_map)
-	delete(tile_data_NO_USE)
+	delete(game.tab_1.tile_data)
+	delete(game.tab_1.buildings_data)
+	delete(game.tab_1.fog_data)
 	delete(game.tab_1.map_mesh.array)
 	delete(global_resource_managers.oid.base)
 	delete(global_resource_managers.oid.multiplier)
 	delete(global_resource_managers.oid.exponent)
 	delete(game.global.entities)
+	delete(game.tab_1.mass^)
 }
