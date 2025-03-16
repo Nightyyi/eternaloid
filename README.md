@@ -1,4 +1,4 @@
-ETERNALIOD
+ETERNALOID
 
 an idle about getting the most ridiculous numbers!
 you go from placing down houses to copying entiry city blocks to even more idle stuff!
