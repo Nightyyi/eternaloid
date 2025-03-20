@@ -1,9 +1,10 @@
-ETERNALIOD
+ETERNALOID
 
 an idle about getting the most ridiculous numbers!
 you go from placing down houses to copying entiry city blocks to even more idle stuff!
 
 [WIP, currently unplayable]
 
-A simple game.
-Inspired by a .io i grew up playing.
+latest screenshot of what it looks like:
+![image](https://github.com/user-attachments/assets/d67465f3-cc69-4868-a56a-dc0a1b1e31f7)
+
