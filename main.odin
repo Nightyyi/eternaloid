@@ -20,7 +20,7 @@ Game_State :: struct {
 	tab_state: i32,
 	tab_1:     Game_Tab_1,
 	slide:     bool,
-	seed:      i64,
+	seed:      f64,
 	frame:     i128,
 }
 
@@ -56,6 +56,8 @@ Game_Tab_1 :: struct {
 	map_mesh:           rg.mesh,
 	dev_see:            bool,
 	dev_elevation:      bool,
+  built_tick:         i32,
+  built_max:          i32,
 }
 
 // settings tab
@@ -134,13 +136,18 @@ global :: proc(game: ^Game_State) {
 			game.tab_1.buildings_data[index] = building_type
 			resource^ = od.sub(resource^, cost)
 			game.events.update_town = true
+			game.tab_1.built_tick +=1
 		}
 	}
 
 	update_building_area :: proc(game: ^Game_State) {
-		if (game.frame % 60 == 0) {
+		if (game.frame % 10 == 0) {
 			for building_type, index in game.tab_1.building_area_data {
-				if building_type != 0 {
+        if game.tab_1.built_tick > game.tab_1.built_max{
+          break
+        }
+        chance := (rg.random_num(&game.seed)+1)/2
+				if building_type != 0 && chance < 0.5 {
 					building := game.tab_1.buildings_data[index]
 
 					if building != building_type {
@@ -158,6 +165,7 @@ global :: proc(game: ^Game_State) {
 				}
 			}
 		}
+    game.tab_1.built_tick = 0
 	}
 
 	count_entities :: proc(game: ^Game_State) -> []i32 {
@@ -613,12 +621,7 @@ town_tab :: proc(
 
 	display_oidstat :: proc(game: Game_State, window: ^nl.Window_Data) {
 		buffer: [16]u8
-		temp_string := fmt.bprintf(
-			buffer[:],
-			"%fe%f",
-			game.global.oid.mantissa,
-			f64(game.global.oid.exponent),
-		)
+    temp_string := od.print(&buffer, game.global.oid)
 		display_icon_text(
 			png = "oid.png",
 			text = temp_string,
@@ -877,6 +880,7 @@ main :: proc() {
 			continent_sizes = make([dynamic]map[[2]i32][2]i32),
 			camera_zoom = 1,
 			camera_zoom_speed = 0.3,
+      built_max         = 2,
 		},
 	}
 	generate_objects(&game)
@@ -926,6 +930,7 @@ main :: proc() {
 		} else if (game.tab_state == 1) {
 			town_tab(game = &game, window = &window, mouse = mouse, shader = shader)
 		}
+    nl.draw_borders(window)
 		rl.EndDrawing()
 		animate_textures(window = &window, frame = game.frame)
 		global(&game)

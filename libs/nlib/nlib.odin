@@ -11,7 +11,7 @@ Mouse_Data :: struct {
 	pos:         Coord,
 	virtual_pos: Coord,
 	clicking:    bool,
-	hold:    bool,
+	hold:        bool,
 }
 
 Window_Data :: struct {
@@ -31,11 +31,11 @@ Texture_Cache :: struct {
 	size:           f32,
 }
 
-clamp_Coord :: proc(val: ^Coord,min: Coord, max: Coord){
-  if val^.x < min.x{ val^.x = min.x}
-  if val^.y < min.y{ val^.y = min.y}
-  if val^.x > max.x{ val^.x = max.x}
-  if val^.y > max.y{ val^.x = max.y}
+clamp_Coord :: proc(val: ^Coord, min: Coord, max: Coord) {
+	if val^.x < min.x {val^.x = min.x}
+	if val^.y < min.y {val^.y = min.y}
+	if val^.x > max.x {val^.x = max.x}
+	if val^.y > max.y {val^.x = max.y}
 }
 
 get_virtual_window :: proc(window: Window_Data) -> (Coord, f64) {
@@ -67,7 +67,6 @@ get_padding :: proc(window: Window_Data, virtual_size: Coord) -> Coord {
 		(window.present_size.x - virtual_size.x) / 2,
 		(window.present_size.y - virtual_size.y) / 2,
 	}
-
 }
 
 update_mouse :: proc(mouse: ^Mouse_Data, window: Window_Data) {
@@ -167,6 +166,32 @@ draw_rectangle :: proc(position: Coord, size: Coord, window: Window_Data, color:
 		color,
 	)
 }
+
+draw_borders :: proc(window: Window_Data) {
+	virtual_size, virtual_ratio := get_virtual_window(window)
+	padding := get_padding(window = window, virtual_size = virtual_size)
+	rl.DrawRectangle(
+		0,0,
+		padding.x, window.present_size.y,
+		rl.Color{0, 0, 0, 255},
+	)
+	rl.DrawRectangle(
+		window.present_size.x - padding.x, 0,
+		padding.x, window.present_size.y,
+		rl.Color{0, 0, 0, 255},
+	)
+	rl.DrawRectangle(
+		0, 0,
+		window.present_size.x, padding.y,
+		rl.Color{0, 0, 0, 255},
+	)
+	rl.DrawRectangle(
+		0, window.present_size.y - padding.y,
+		window.present_size.x, padding.y,
+		rl.Color{0, 0, 0, 255},
+	)
+}
+
 
 draw_slider :: proc(
 	position: Coord,

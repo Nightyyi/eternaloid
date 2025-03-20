@@ -25,8 +25,8 @@ fractal_noise :: proc(pos: [2]i32, iterations: i32, zoom: f64, seed: i64) -> f32
 }
 
 random_num :: proc(seed: ^f64) -> f64{
-  new_seed := f64(noise.noise_2d(i64(seed^*10000), {f64(seed^*2),0}))
-  seed^ = new_seed
+  new_seed := f64(noise.noise_2d(i64(seed^*100000), {f64(seed^*2),seed^}))
+  seed^ = new_seed*100000+1
   return new_seed
 
 }
