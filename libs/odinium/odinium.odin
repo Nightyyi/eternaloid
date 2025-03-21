@@ -11,17 +11,27 @@ bigfloat :: struct {
 print :: proc(buffer: ^[$T]u8, x: bigfloat) -> string {
 	suffix := [?]cstring{"", "K", "M", "B", "T", "Qa", "Qd", "Sx", "Sp"}
 	suffix_type := f64(x.exponent / 3)
-	if i32(suffix_type) > len(suffix) {
-		temp_string := fmt.bprintf(buffer^[:], "%fee%d", x.mantissa, x.exponent)
-		return temp_string
-	} else {
+	if suffix_type < 0 {
 		temp_string := fmt.bprintf(
 			buffer^[:],
-			"%f %s",
-			x.mantissa * math.pow10_f64(f64(i32(suffix_type) % 3)),
-			suffix[i32(suffix_type)],
+			"%f",
+			x.mantissa * math.pow10_f64(f64(i32(x.exponent))),
 		)
 		return temp_string
+	} else {
+		if i32(suffix_type) > len(suffix) {
+			temp_string := fmt.bprintf(buffer^[:], "%fee%d", x.mantissa, x.exponent)
+			return temp_string
+		} else {
+			temp_string := fmt.bprintf(
+				buffer^[:],
+				"%f %s",
+				x.mantissa * math.pow10_f64(f64(i32(x.exponent) % 3)),
+				suffix[i32(suffix_type)],
+			)
+			return temp_string
+		}
+
 	}
 }
 
@@ -32,6 +42,9 @@ normalize :: proc(number: bigfloat) -> bigfloat {
 		e_plus := math.floor(math.log10_f64(abs(mantissa)))
 		// normalize exponents upward if mantissa > 10
 		if i128(e_plus) != 0 {
+      if mantissa < 0 {
+        e_plus = 0-e_plus
+      }
 			mantissa = mantissa * math.pow(10, -e_plus)
 			exponent = exponent + i128(e_plus)
 		}

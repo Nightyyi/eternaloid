@@ -1,4 +1,4 @@
-package odinium
+package odiniumrsc
 
 import od "../odinium"
 import "core:fmt"

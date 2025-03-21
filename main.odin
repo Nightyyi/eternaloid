@@ -3,6 +3,7 @@ package rlib
 import rg "libs/gen"
 import nl "libs/nlib"
 import od "libs/odinium"
+import odr "libs/odinium_cost"
 import rsc "libs/resource"
 import rl "vendor:raylib"
 
@@ -12,6 +13,7 @@ import "core:math"
 import "core:mem"
 import "core:path/filepath"
 import "core:strings"
+import tim "core:time"
 
 Game_State :: struct {
 	global:    ^Global_Data,
@@ -28,6 +30,9 @@ Game_State :: struct {
 Global_Data :: struct {
 	entities: []i32,
 	oid:      od.bigfloat,
+	wood:     od.bigfloat,
+	food:     od.bigfloat,
+	stone:    od.bigfloat,
 }
 
 Global_Resource :: struct {
@@ -56,8 +61,10 @@ Game_Tab_1 :: struct {
 	map_mesh:           rg.mesh,
 	dev_see:            bool,
 	dev_elevation:      bool,
-  built_tick:         i32,
-  built_max:          i32,
+	selecting:          bool,
+	selection_area:     [4]i32,
+	built_tick:         i32,
+	built_max:          i32,
 }
 
 // settings tab
@@ -114,10 +121,14 @@ check_can_draw :: proc(
 
 global :: proc(game: ^Game_State) {
 
-	cost_building :: proc(building_type: i32) -> (cost: od.bigfloat) {
+	cost_building :: proc(building_type: i32, amount: i32) -> (cost: od.bigfloat) {
 		cost = od.bigfloat{1, 1000}
 		if (building_type == 1) {
-			cost = od.bigfloat{2.5, 2}
+			cost = odr.linear_growth(
+				od.normalize(od.bigfloat{f64(amount), 0}),
+				od.bigfloat{2.5, 2},
+				od.bigfloat{2.5, 0},
+			)
 		}
 		if (building_type == 2) {
 			cost = od.bigfloat{2.5, 2}
@@ -131,22 +142,23 @@ global :: proc(game: ^Game_State) {
 		resource: ^od.bigfloat,
 		index: int,
 	) {
-		cost := cost_building(building_type)
+		cost := cost_building(building_type, game.global.entities[building_type])
 		if od.ls__eq(cost, resource^) {
 			game.tab_1.buildings_data[index] = building_type
 			resource^ = od.sub(resource^, cost)
 			game.events.update_town = true
-			game.tab_1.built_tick +=1
+			game.tab_1.built_tick += 1
+			game.global.entities[building_type] += 1
 		}
 	}
 
 	update_building_area :: proc(game: ^Game_State) {
 		if (game.frame % 10 == 0) {
 			for building_type, index in game.tab_1.building_area_data {
-        if game.tab_1.built_tick > game.tab_1.built_max{
-          break
-        }
-        chance := (rg.random_num(&game.seed)+1)/2
+				if game.tab_1.built_tick > game.tab_1.built_max {
+					break
+				}
+				chance := (rg.random_num(&game.seed) + 1) / 2
 				if building_type != 0 && chance < 0.5 {
 					building := game.tab_1.buildings_data[index]
 
@@ -157,15 +169,17 @@ global :: proc(game: ^Game_State) {
 							resource = &game.global.oid,
 							index = index,
 						)
-            if building_type == 2{
-              game.events.update_fog = true
-            }
+						if building_type == 2 {
+							game.events.update_fog = true
+						}
+					} else {
+						game.tab_1.building_area_data[index] = 0
 					}
 
 				}
 			}
 		}
-    game.tab_1.built_tick = 0
+		game.tab_1.built_tick = 0
 	}
 
 	count_entities :: proc(game: ^Game_State) -> []i32 {
@@ -186,11 +200,10 @@ global :: proc(game: ^Game_State) {
 			rsc.Boost_Type.base,
 		)
 		game.events.update_town = false
-		fmt.println(f64(game.global.entities[1]))
 	}
 
-	rsc.run_resource_manager(&game.global_m.oid)
 	update_building_area(game)
+	rsc.run_resource_manager(&game.global_m.oid)
 }
 
 generate_spawn :: proc(game: ^Game_State) {
@@ -264,8 +277,8 @@ draw_all_tiles :: proc(
 		coord: nl.Coord,
 	) {
 		size_c := nl.Coord {
-			i32(32 * size) + 1,
-			i32(f64(i32(val * 8) - i32(valinfront * 8)) * 16 * size) + 1,
+			i32(32 * size) + 2,
+			i32(f64(i32(val * 8) - i32(valinfront * 8)) * 16 * size) + 6,
 		}
 		if i32(valinfront * 8) < i32(val * 8) {
 			elevated_pos := position
@@ -419,7 +432,7 @@ draw_all_tiles :: proc(
 	}
 
 
-	size_c := nl.Coord{i32(32 * size) + 1, i32(32 * size) + 1}
+	size_c := nl.Coord{i32(32 * size) + 2, i32(32 * size) + 2}
 
 	highlighted := nl.Coord{-1, 0}
 	pos := 0
@@ -535,15 +548,6 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 	) {game.tab_1.hold = "tower.png";game.tab_1.hold_t = 2}
 }
 
-set_town :: proc(game: ^Game_State, tile: nl.Coord, mouse: nl.Mouse_Data) {
-	if (mouse.hold) {
-    ok := bool(game.tab_1.fog_data[tile.x + tile.y * game.tab_1.map_mesh.size.x])
-		if (game.tab_1.hold != "") && ok {
-			tile_index: i32 = game.tab_1.map_mesh.size.x * tile.y + tile.x
-			game.tab_1.building_area_data[tile_index] = game.tab_1.hold_t
-			game.events.update_fog = true
-		}}
-}
 
 town_tab :: proc(
 	game: ^Game_State,
@@ -552,6 +556,27 @@ town_tab :: proc(
 	shader: rl.Shader,
 ) {
 
+	set_town :: proc(game: ^Game_State, tile: nl.Coord) {
+		ok := bool(game.tab_1.fog_data[tile.x + tile.y * game.tab_1.map_mesh.size.x])
+		if (game.tab_1.hold != "") && ok {
+			tile_index: i32 = game.tab_1.map_mesh.size.x * tile.y + tile.x
+			game.tab_1.building_area_data[tile_index] = game.tab_1.hold_t
+			game.events.update_fog = true
+		}
+	}
+
+	set_selecton :: proc(game: ^Game_State) {
+		selection := game.tab_1.selection_area
+		if selection.y > selection.w {selection.yw = selection.yw}
+		if selection.x > selection.z {selection.xz = selection.zx}
+		for y in selection.y ..= selection.w {
+			for x in selection.x ..= selection.z {
+				set_town(game, nl.Coord{x, y})
+			}
+		}
+		game.tab_1.hold = ""
+		game.tab_1.hold_t = 0
+	}
 
 	update_fog :: proc(game: ^Game_State) {
 		fog_kernel :: proc(
@@ -619,9 +644,9 @@ town_tab :: proc(
 
 	}
 
-	display_oidstat :: proc(game: Game_State, window: ^nl.Window_Data) {
+	display_stats :: proc(game: Game_State, window: ^nl.Window_Data) {
 		buffer: [16]u8
-    temp_string := od.print(&buffer, game.global.oid)
+		temp_string := od.print(&buffer, game.global.oid)
 		display_icon_text(
 			png = "oid.png",
 			text = temp_string,
@@ -647,7 +672,21 @@ town_tab :: proc(
 						valid_tile = true
 					}}}}
 		nl.draw_png(position = mouse.pos, png_name = game.tab_1.hold, window = window, size = 2)
-		if (valid_tile) {set_town(game, on_tile_pos, mouse)}
+		if (valid_tile) {
+			if (mouse.clicking && !game.tab_1.selecting) {
+				game.tab_1.selection_area.xy = on_tile_pos
+				game.tab_1.selecting = true
+			}
+			if (mouse.hold && game.tab_1.selecting) {
+				game.tab_1.selection_area.zw = on_tile_pos
+			}
+			if (!mouse.hold && game.tab_1.selecting) {
+				game.tab_1.selection_area.zw = on_tile_pos
+				set_selecton(game)
+				game.tab_1.selecting = false
+			}
+		}
+
 		building_select_tab(game = game, window = window, mouse = mouse)
 	}
 
@@ -748,7 +787,7 @@ town_tab :: proc(
 	update_fog(game)
 	draw_town_background(window = window^)
 	display_tiles(game, &on_tile_pos, shader, window, mouse)
-	display_oidstat(game^, window)
+	display_stats(game^, window)
 	buildings_manager(on_tile_pos = on_tile_pos, game = game, window = window, mouse = mouse)
 	print_coord_mouse(on_tile_pos, window^)
 	// display resources
@@ -853,7 +892,10 @@ main :: proc() {
 
 
 	global_resources := Global_Data {
-		oid = od.bigfloat{5, 3},
+		oid   = od.bigfloat{5, 3},
+		wood  = od.bigfloat{0, 0},
+		stone = od.bigfloat{0, 0},
+		food = od.bigfloat{0, 0},
 	}
 	global_resource_managers := Global_Resource {
 		oid = rsc.Resource_Manager {
@@ -865,10 +907,14 @@ main :: proc() {
 		},
 	}
 
+	seed: i64
+	buf: [32]u8
+	rg.hash_string(tim.time_to_string_hms(tim.now(), buf[:]), &seed)
 
 	game := Game_State {
 		global = &global_resources,
 		global_m = global_resource_managers,
+		seed = f64(seed),
 		tab_state = 1,
 		tab_1 = Game_Tab_1 {
 			hold = "",
@@ -876,11 +922,11 @@ main :: proc() {
 			fog_data = make_slice([]i32, 300 * 300),
 			buildings_data = make_slice([]i32, 300 * 300),
 			building_area_data = make_slice([]i32, 300 * 300),
-			map_mesh = rg.create_mesh_custom({300, 300}, 300, 2151232),
+			map_mesh = rg.create_mesh_custom({300, 300}, 300, seed),
 			continent_sizes = make([dynamic]map[[2]i32][2]i32),
 			camera_zoom = 1,
 			camera_zoom_speed = 0.3,
-      built_max         = 2,
+			built_max = 2,
 		},
 	}
 	generate_objects(&game)
@@ -910,8 +956,7 @@ main :: proc() {
 	game.tab_1.test_data = &global_map
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
 	defer rl.UnloadShader(shader)
-
-
+	game.events.update_town = true
 	for !rl.WindowShouldClose() {
 
 
@@ -930,7 +975,7 @@ main :: proc() {
 		} else if (game.tab_state == 1) {
 			town_tab(game = &game, window = &window, mouse = mouse, shader = shader)
 		}
-    nl.draw_borders(window)
+		nl.draw_borders(window)
 		rl.EndDrawing()
 		animate_textures(window = &window, frame = game.frame)
 		global(&game)

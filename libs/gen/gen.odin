@@ -31,6 +31,14 @@ random_num :: proc(seed: ^f64) -> f64{
 
 }
 
+hash_string :: proc (str: string, hash: ^i64){
+  accumilator : i64 = 0
+  for char in str{
+    fmt.print(char)
+    accumilator = (accumilator ~ i64(char)) << 2
+  }
+  hash^ = accumilator
+}
 
 bfd :: proc(globalmap: ^map[[2]i32]bool,pos: [2]i32, mesh: mesh, min: f64) -> (map[[2]i32][2]i32, bool) {
 	check_in :: proc(pos: [2]i32, min, max: i32, output: map[[2]i32][2]i32) -> bool {
