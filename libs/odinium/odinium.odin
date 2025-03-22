@@ -19,7 +19,7 @@ print :: proc(buffer: ^[$T]u8, x: bigfloat) -> string {
 		)
 		return temp_string
 	} else {
-		if i32(suffix_type) > len(suffix) {
+		if i32(suffix_type) > len(suffix)-1 {
 			temp_string := fmt.bprintf(buffer^[:], "%fee%d", x.mantissa, x.exponent)
 			return temp_string
 		} else {
@@ -42,9 +42,9 @@ normalize :: proc(number: bigfloat) -> bigfloat {
 		e_plus := math.floor(math.log10_f64(abs(mantissa)))
 		// normalize exponents upward if mantissa > 10
 		if i128(e_plus) != 0 {
-      if mantissa < 0 {
-        e_plus = 0-e_plus
-      }
+			if mantissa < 0 {
+				e_plus = 0 - e_plus
+			}
 			mantissa = mantissa * math.pow(10, -e_plus)
 			exponent = exponent + i128(e_plus)
 		}
@@ -90,7 +90,11 @@ add :: proc(x, y: bigfloat) -> bigfloat {
 
 sub :: proc(x, y: bigfloat) -> bigfloat {
 	y_negated := negate(y)
-	return add(x, y_negated)
+	if y.mantissa != 0 {
+		return add(x, y_negated)
+	} else {
+		return x
+	}
 }
 
 mul :: proc(x, y: bigfloat) -> bigfloat {
@@ -129,6 +133,14 @@ root_bfbf :: proc(x, y: bigfloat) -> bigfloat {
 root_bff64 :: proc(x: bigfloat, y: f64) -> bigfloat {
 	new_exponent := x.exponent / i128(y)
 	new_mantissa := math.log10_f64(x.mantissa) / y + math.floor_f64(f64(x.exponent) / y)
+	new_mantissa = math.pow10_f64(new_mantissa)
+	new_bignum := normalize(bigfloat{mantissa = new_mantissa, exponent = new_exponent})
+	return new_bignum
+}
+
+sqrt :: proc(x: bigfloat) -> bigfloat {
+	new_exponent := x.exponent / i128(2)
+	new_mantissa := math.log10_f64(x.mantissa) / 2 + math.floor_f64(f64(x.exponent) / 2)
 	new_mantissa = math.pow10_f64(new_mantissa)
 	new_bignum := normalize(bigfloat{mantissa = new_mantissa, exponent = new_exponent})
 	return new_bignum

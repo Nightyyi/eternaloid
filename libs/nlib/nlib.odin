@@ -170,24 +170,20 @@ draw_rectangle :: proc(position: Coord, size: Coord, window: Window_Data, color:
 draw_borders :: proc(window: Window_Data) {
 	virtual_size, virtual_ratio := get_virtual_window(window)
 	padding := get_padding(window = window, virtual_size = virtual_size)
+	rl.DrawRectangle(0, 0, padding.x, window.present_size.y, rl.Color{0, 0, 0, 255})
 	rl.DrawRectangle(
-		0,0,
-		padding.x, window.present_size.y,
+		window.present_size.x - padding.x,
+		0,
+		padding.x,
+		window.present_size.y,
 		rl.Color{0, 0, 0, 255},
 	)
+	rl.DrawRectangle(0, 0, window.present_size.x, padding.y, rl.Color{0, 0, 0, 255})
 	rl.DrawRectangle(
-		window.present_size.x - padding.x, 0,
-		padding.x, window.present_size.y,
-		rl.Color{0, 0, 0, 255},
-	)
-	rl.DrawRectangle(
-		0, 0,
-		window.present_size.x, padding.y,
-		rl.Color{0, 0, 0, 255},
-	)
-	rl.DrawRectangle(
-		0, window.present_size.y - padding.y,
-		window.present_size.x, padding.y,
+		0,
+		window.present_size.y - padding.y,
+		window.present_size.x,
+		padding.y,
 		rl.Color{0, 0, 0, 255},
 	)
 }
@@ -285,6 +281,42 @@ button_png_t :: proc(
 	)
 
 	return button_clicked
+}
+
+button_png_auto :: proc(
+	position: Coord,
+	hitbox: Coord,
+	png_name: string,
+	window: ^Window_Data,
+	mouse: Mouse_Data,
+	rotation: f32 = 0,
+	size: f32 = 1,
+) -> (
+	bool,
+	bool,
+) {
+
+	on_button := in_hitbox(position, hitbox, mouse)
+	button_clicked := on_button && mouse.clicking
+	which_texture: int = 0
+
+	if on_button {which_texture = 1}
+	if button_clicked {which_texture = 2}
+
+	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)
+	buf: [32]u8
+	new_string := fmt.bprintf(buf[:], "%s%d.png", png_name, which_texture + 1)
+	texture: rl.Texture = pull_texture(new_string, &window.image_cache_map, size)
+
+	rl.DrawTextureEx(
+		texture,
+		rl.Vector2{f32(virtual_pos.x), f32(virtual_pos.y)},
+		rotation,
+		size * f32(virtual_ratio),
+		rl.Color{255, 255, 255, 255},
+	)
+
+	return button_clicked, on_button
 }
 
 begin_draw_area :: proc(pos: Coord, size: Coord, window: Window_Data) {

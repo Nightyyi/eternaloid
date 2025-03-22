@@ -28,15 +28,22 @@ Game_State :: struct {
 
 
 Global_Data :: struct {
-	entities: []i32,
-	oid:      od.bigfloat,
-	wood:     od.bigfloat,
-	food:     od.bigfloat,
-	stone:    od.bigfloat,
+	entities:       []i32,
+	total_entities: f64,
+	oid:            od.bigfloat,
+	oid_max:        od.bigfloat,
+	wood:           od.bigfloat,
+	food:           od.bigfloat,
+	stone:          od.bigfloat,
+	global_speed:   od.bigfloat,
+	town_speed:     od.bigfloat,
 }
 
 Global_Resource :: struct {
-	oid: rsc.Resource_Manager,
+	oid:   rsc.Resource_Manager,
+	wood:  rsc.Resource_Manager,
+	food:  rsc.Resource_Manager,
+	stone: rsc.Resource_Manager,
 }
 
 Events :: struct {
@@ -65,6 +72,7 @@ Game_Tab_1 :: struct {
 	selection_area:     [4]i32,
 	built_tick:         i32,
 	built_max:          i32,
+	building_info:      string,
 }
 
 // settings tab
@@ -121,34 +129,107 @@ check_can_draw :: proc(
 
 global :: proc(game: ^Game_State) {
 
-	cost_building :: proc(building_type: i32, amount: i32) -> (cost: od.bigfloat) {
-		cost = od.bigfloat{1, 1000}
-		if (building_type == 1) {
-			cost = odr.linear_growth(
-				od.normalize(od.bigfloat{f64(amount), 0}),
-				od.bigfloat{2.5, 2},
-				od.bigfloat{2.5, 0},
-			)
-		}
-		if (building_type == 2) {
-			cost = od.bigfloat{2.5, 2}
-		}
-		return
-	}
 
-	buy_building :: proc(
-		building_type: i32,
-		game: ^Game_State,
-		resource: ^od.bigfloat,
-		index: int,
-	) {
-		cost := cost_building(building_type, game.global.entities[building_type])
-		if od.ls__eq(cost, resource^) {
+	buy_building :: proc(building_type: i32, game: ^Game_State, index: int) {
+		cost_resources :: struct {
+			oid:   od.bigfloat,
+			wood:  od.bigfloat,
+			food:  od.bigfloat,
+			stone: od.bigfloat,
+		}
+
+		cost_building :: proc(
+			building_type: i32,
+			amount: i32,
+			natural_tile: i32,
+		) -> (
+			cost: cost_resources,
+			ok: bool,
+		) {
+			cost = cost_resources {
+				od.bigfloat{0, 0},
+				od.bigfloat{0, 0},
+				od.bigfloat{0, 0},
+				od.bigfloat{0, 0},
+			}
+			ok = true
+			if (building_type == 1) {
+				cost.wood = odr.linear_growth(
+					od.normalize(od.bigfloat{f64(amount), 0}),
+					od.bigfloat{2.5, 2},
+					od.bigfloat{8, 0},
+				)
+			}
+			if (building_type == 2) {
+				cost.wood = od.bigfloat{2.5, 2}
+			}
+			if (building_type == 3) {
+				if 2 < natural_tile && natural_tile < 7 {
+					cost.wood = odr.linear_growth(
+						od.normalize(od.bigfloat{f64(amount), 0}),
+						od.bigfloat{2.5, 2},
+						od.bigfloat{5, 0},
+					)
+				} else {ok = false}
+			}
+			if (building_type == 4) {
+				if natural_tile == 1 {
+					cost.wood = odr.linear_growth(
+						od.normalize(od.bigfloat{f64(amount), 0}),
+						od.bigfloat{1, 3},
+						od.bigfloat{5, 1},
+					)
+				} else {ok = false}
+			}
+			if (building_type == 5) {
+				if natural_tile == 2 {
+					cost.wood = odr.linear_growth(
+						od.normalize(od.bigfloat{f64(amount), 0}),
+						od.bigfloat{1, 2},
+						od.bigfloat{5, 0},
+					)
+				} else {ok = false}
+			}
+			return
+			/*
+		"boulders.png",
+			"grass.png",
+			"tree1.png",
+			"tree2.png",
+			"tree3.png",
+			"tree5.png",*
+    */
+		}
+
+		compare_resources :: proc(r: Global_Data, c: cost_resources) -> (can_buy: bool) {
+			can_buy = true
+			if od.ls_than(r.oid, c.oid) {can_buy = false}
+			if od.ls_than(r.wood, c.wood) {can_buy = false}
+			if od.ls_than(r.stone, c.stone) {can_buy = false}
+			if od.ls_than(r.food, c.food) {can_buy = false}
+			return
+		}
+		deduct_resources :: proc(r: ^Global_Data, c: cost_resources) {
+			r.oid = od.sub(r.oid, c.oid)
+			r.wood = od.sub(r.wood, c.wood)
+			r.stone = od.sub(r.stone, c.stone)
+			r.food = od.sub(r.food, c.food)
+		}
+
+		cost, ok := cost_building(
+			building_type,
+			game.global.entities[building_type],
+			game.tab_1.tile_data[index],
+		)
+		if compare_resources(game.global^, cost) && ok {
 			game.tab_1.buildings_data[index] = building_type
-			resource^ = od.sub(resource^, cost)
+			deduct_resources(game.global, cost)
 			game.events.update_town = true
 			game.tab_1.built_tick += 1
 			game.global.entities[building_type] += 1
+		}
+		if !ok {
+			game.tab_1.building_area_data[index] = 0
 		}
 	}
 
@@ -163,12 +244,7 @@ global :: proc(game: ^Game_State) {
 					building := game.tab_1.buildings_data[index]
 
 					if building != building_type {
-						buy_building(
-							building_type = building_type,
-							game = game,
-							resource = &game.global.oid,
-							index = index,
-						)
+						buy_building(building_type = building_type, game = game, index = index)
 						if building_type == 2 {
 							game.events.update_fog = true
 						}
@@ -182,28 +258,60 @@ global :: proc(game: ^Game_State) {
 		game.tab_1.built_tick = 0
 	}
 
-	count_entities :: proc(game: ^Game_State) -> []i32 {
+	count_entities :: proc(game: ^Game_State) -> ([]i32, f64) {
 		list_entities := make_slice([]i32, 8)
+		total: f64 = 0
 		for i in game.tab_1.buildings_data {
 			list_entities[i] += 1
+			if i != 0 {
+				total += 1
+
+			}
 		}
-		return list_entities
+		return list_entities, total
 	}
 
 	if game.events.update_town {
 		delete(game.global.entities)
-		game.global.entities = count_entities(game)
+		total: f64
+		game.global.entities, total = count_entities(game)
+		game.global.total_entities = total
+		game.global.oid = od.normalize(od.bigfloat{f64(game.global.entities[1]), 0})
+
+
 		rsc.update_resource(
-			&game.global_m.oid,
-			od.bigfloat{f64(game.global.entities[1]), 0},
+			&game.global_m.stone,
+			od.bigfloat{f64(game.global.entities[4]), -3},
+			0,
+			rsc.Boost_Type.base,
+		)
+		rsc.update_resource(
+			&game.global_m.wood,
+			od.bigfloat{f64(game.global.entities[3]), -1},
+			0,
+			rsc.Boost_Type.base,
+		)
+		rsc.update_resource(
+			&game.global_m.food,
+			od.bigfloat{f64(game.global.entities[5]), -1},
 			0,
 			rsc.Boost_Type.base,
 		)
 		game.events.update_town = false
 	}
 
+	game.global.town_speed = od.sqrt(od.div(
+		od.mul(game.global.oid, od.add(od.sqrt(game.global.food), od.bigfloat{1, 0})),
+		od.normalize(od.bigfloat{game.global.total_entities + 1, 0}),
+	))
+	if od.ls_than(game.global.town_speed, od.bigfloat{1, -1}) {
+		game.global.town_speed = od.bigfloat{1, -1}
+	}
 	update_building_area(game)
 	rsc.run_resource_manager(&game.global_m.oid)
+	rsc.run_resource_manager(&game.global_m.wood)
+	rsc.run_resource_manager(&game.global_m.stone)
+	rsc.run_resource_manager(&game.global_m.food)
 }
 
 generate_spawn :: proc(game: ^Game_State) {
@@ -466,7 +574,27 @@ generate_objects :: proc(game: ^Game_State) {
 	rg.generate_objects_i32(
 		mesh = game.tab_1.map_mesh,
 		array = &game.tab_1.tile_data,
-		percentage = 0.25,
+		percentage = 0.7,
+		range = {0.15, 1},
+		set = 2,
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+		zoom = 16,
+	)
+	rg.generate_objects_list_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.2,
+		range = {0.25, 0.8},
+		set = [?]i32{2, 3, 4, 5, 6},
+		seed = &gen_seed,
+		target = nl.Coord{1, 8},
+		zoom = 8,
+	)
+	rg.generate_objects_i32(
+		mesh = game.tab_1.map_mesh,
+		array = &game.tab_1.tile_data,
+		percentage = 0.6,
 		range = {0.8, 1},
 		set = 1,
 		seed = &gen_seed,
@@ -475,27 +603,9 @@ generate_objects :: proc(game: ^Game_State) {
 	rg.generate_objects_i32(
 		mesh = game.tab_1.map_mesh,
 		array = &game.tab_1.tile_data,
-		percentage = 0.1,
-		range = {0.25, .8},
+		percentage = 0.2,
+		range = {0.25, 1},
 		set = 1,
-		seed = &gen_seed,
-		target = nl.Coord{1, 8},
-	)
-	rg.generate_objects_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.7,
-		range = {0.15, 1},
-		set = 2,
-		seed = &gen_seed,
-		target = nl.Coord{1, 8},
-	)
-	rg.generate_objects_list_i32(
-		mesh = game.tab_1.map_mesh,
-		array = &game.tab_1.tile_data,
-		percentage = 0.4,
-		range = {0.25, 0.8},
-		set = [?]i32{2, 3, 4, 5, 6},
 		seed = &gen_seed,
 		target = nl.Coord{1, 8},
 	)
@@ -530,22 +640,84 @@ display_icon_text :: proc(
 }
 
 building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: nl.Mouse_Data) {
-	if nl.button_png_t(
-		position = nl.Coord{10, 300},
-		hitbox = nl.Coord{64, 64},
-		png_name = [3]string{"house_bt_1.png", "house_bt_2.png", "house_bt_3.png"},
-		window = window,
+	building_button :: proc(
+		position: nl.Coord,
+		png_name, hold_png, hover_info: string,
+		set_hold: i32,
+		game: ^Game_State,
+		mouse: nl.Mouse_Data,
+		window: ^nl.Window_Data,
+	) {
+		clicked, hover := nl.button_png_auto(
+			position = position,
+			hitbox = nl.Coord{32, 32},
+			png_name = png_name,
+			window = window,
+			mouse = mouse,
+			size = 2,
+		)
+		if clicked {game.tab_1.hold = hold_png;game.tab_1.hold_t = set_hold}
+		if hover {game.tab_1.building_info = hover_info}
+
+	}
+	building_button(
+		position = nl.Coord{10, 200},
+		png_name = "house_bt_",
+		hold_png = "house_lv0.png",
+		set_hold = 1,
+		game = game,
 		mouse = mouse,
-		size = 2,
-	) {game.tab_1.hold = "house_lv0.png";game.tab_1.hold_t = 1}
-	if nl.button_png_t(
-		position = nl.Coord{74, 300},
-		hitbox = nl.Coord{64, 64},
-		png_name = [3]string{"tower_bt_1.png", "tower_bt_2.png", "tower_bt_3.png"},
 		window = window,
+		hover_info = "House",
+	)
+	building_button(
+		position = nl.Coord{42, 200},
+		png_name = "tower_bt_",
+		hold_png = "tower.png",
+		set_hold = 2,
+		game = game,
 		mouse = mouse,
-		size = 2,
-	) {game.tab_1.hold = "tower.png";game.tab_1.hold_t = 2}
+		window = window,
+		hover_info = "Watch Tower",
+	)
+	building_button(
+		position = nl.Coord{74, 200},
+		png_name = "woodmill_bt_",
+		hold_png = "woodmill.png",
+		set_hold = 3,
+		game = game,
+		mouse = mouse,
+		window = window,
+		hover_info = "Woodmill",
+	)
+	building_button(
+		position = nl.Coord{106, 200},
+		png_name = "mine_bt_",
+		hold_png = "mine.png",
+		set_hold = 4,
+		game = game,
+		mouse = mouse,
+		window = window,
+		hover_info = "Mine",
+	)
+	building_button(
+		position = nl.Coord{138, 200},
+		png_name = "field_bt_",
+		hold_png = "field.png",
+		set_hold = 5,
+		game = game,
+		mouse = mouse,
+		window = window,
+		hover_info = "Field",
+	)
+	nl.draw_text(
+		game.tab_1.building_info,
+		nl.Coord{10, 300},
+		1,
+		rl.Color{255, 255, 255, 255},
+		10,
+		window^,
+	)
 }
 
 
@@ -567,7 +739,7 @@ town_tab :: proc(
 
 	set_selecton :: proc(game: ^Game_State) {
 		selection := game.tab_1.selection_area
-		if selection.y > selection.w {selection.yw = selection.yw}
+		if selection.y > selection.w {selection.yw = selection.wy}
 		if selection.x > selection.z {selection.xz = selection.zx}
 		for y in selection.y ..= selection.w {
 			for x in selection.x ..= selection.z {
@@ -651,11 +823,37 @@ town_tab :: proc(
 			png = "oid.png",
 			text = temp_string,
 			position = nl.Coord{70, 8},
-			offset = nl.Coord{32, 9},
-			font_size = 15,
+			offset = nl.Coord{35, 8},
+			font_size = 16,
 			window = window,
 		)
-
+		temp_string = od.print(&buffer, game.global.wood)
+		display_icon_text(
+			png = "wood.png",
+			text = temp_string,
+			position = nl.Coord{70, 48},
+			offset = nl.Coord{35, 8},
+			font_size = 16,
+			window = window,
+		)
+		temp_string = od.print(&buffer, game.global.stone)
+		display_icon_text(
+			png = "stone.png",
+			text = temp_string,
+			position = nl.Coord{70, 88},
+			offset = nl.Coord{35, 8},
+			font_size = 16,
+			window = window,
+		)
+		temp_string = od.print(&buffer, game.global.food)
+		display_icon_text(
+			png = "food.png",
+			text = temp_string,
+			position = nl.Coord{70, 128},
+			offset = nl.Coord{35, 8},
+			font_size = 16,
+			window = window,
+		)
 	}
 
 	buildings_manager :: proc(
@@ -706,7 +904,14 @@ town_tab :: proc(
 			"tree3.png",
 			"tree5.png",
 		}
-		tile_set_buildings := [?]string{"", "house_lv0.png", "tower.png"}
+		tile_set_buildings := [?]string {
+			"",
+			"house_lv0.png",
+			"tower.png",
+			"woodmill.png",
+			"mine_lv0.png",
+			"field.png",
+		}
 		offset_tiles := nl.Coord{295, 0} + game.tab_1.camera
 		if !game.tab_1.dev_see {
 			nl.begin_draw_area(nl.Coord{295, 0}, nl.Coord{19, 13} * nl.Coord{32, 32}, window^)
@@ -892,10 +1097,13 @@ main :: proc() {
 
 
 	global_resources := Global_Data {
-		oid   = od.bigfloat{5, 3},
-		wood  = od.bigfloat{0, 0},
-		stone = od.bigfloat{0, 0},
-		food = od.bigfloat{0, 0},
+		oid          = od.bigfloat{0, 0},
+		oid_max      = od.bigfloat{0, 0},
+		wood         = od.bigfloat{5, 3},
+		stone        = od.bigfloat{0, 0},
+		food         = od.bigfloat{0, 0},
+		global_speed = od.bigfloat{1, 0},
+		town_speed   = od.bigfloat{0, 0},
 	}
 	global_resource_managers := Global_Resource {
 		oid = rsc.Resource_Manager {
@@ -904,6 +1112,31 @@ main :: proc() {
 			multiplier = make_slice([]od.bigfloat, 0),
 			exponent = make_slice([]od.bigfloat, 0),
 			cached_income = od.bigfloat{0, 0},
+			external_multiplier = &global_resources.town_speed,
+		},
+		wood = rsc.Resource_Manager {
+			output = &global_resources.wood,
+			base = make_slice([]od.bigfloat, 1),
+			multiplier = make_slice([]od.bigfloat, 0),
+			exponent = make_slice([]od.bigfloat, 0),
+			cached_income = od.bigfloat{0, 0},
+			external_multiplier = &global_resources.town_speed,
+		},
+		stone = rsc.Resource_Manager {
+			output = &global_resources.stone,
+			base = make_slice([]od.bigfloat, 1),
+			multiplier = make_slice([]od.bigfloat, 0),
+			exponent = make_slice([]od.bigfloat, 0),
+			cached_income = od.bigfloat{0, 0},
+			external_multiplier = &global_resources.town_speed,
+		},
+		food = rsc.Resource_Manager {
+			output = &global_resources.food,
+			base = make_slice([]od.bigfloat, 1),
+			multiplier = make_slice([]od.bigfloat, 0),
+			exponent = make_slice([]od.bigfloat, 0),
+			cached_income = od.bigfloat{0, 0},
+			external_multiplier = &global_resources.town_speed,
 		},
 	}
 
@@ -987,9 +1220,6 @@ main :: proc() {
 	delete(game.tab_1.building_area_data)
 	delete(game.tab_1.fog_data)
 	delete(game.tab_1.map_mesh.array)
-	delete(global_resource_managers.oid.base)
-	delete(global_resource_managers.oid.multiplier)
-	delete(global_resource_managers.oid.exponent)
 	delete(game.global.entities)
 	for continent in game.tab_1.continent_sizes {
 		delete(continent)
@@ -997,4 +1227,16 @@ main :: proc() {
 	delete(game.tab_1.continent_sizes)
 	delete(global_map)
 
+	delete(global_resource_managers.oid.base)
+	delete(global_resource_managers.oid.multiplier)
+	delete(global_resource_managers.oid.exponent)
+	delete(global_resource_managers.wood.base)
+	delete(global_resource_managers.wood.multiplier)
+	delete(global_resource_managers.wood.exponent)
+	delete(global_resource_managers.food.base)
+	delete(global_resource_managers.food.multiplier)
+	delete(global_resource_managers.food.exponent)
+	delete(global_resource_managers.stone.base)
+	delete(global_resource_managers.stone.multiplier)
+	delete(global_resource_managers.stone.exponent)
 }

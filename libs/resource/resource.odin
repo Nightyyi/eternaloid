@@ -10,12 +10,13 @@ Boost_Type :: enum {
 }
 
 Resource_Manager :: struct {
-	output:        ^od.bigfloat,
-	base:          []od.bigfloat,
-	multiplier:    []od.bigfloat,
-	exponent:      []od.bigfloat,
-	cached_income: od.bigfloat,
-	update:        bool,
+	output:              ^od.bigfloat,
+	base:                []od.bigfloat,
+	multiplier:          []od.bigfloat,
+	exponent:            []od.bigfloat,
+	cached_income:       od.bigfloat,
+	external_multiplier: ^od.bigfloat,
+	update:              bool,
 }
 
 create_resource_manager :: proc(
@@ -35,11 +36,11 @@ create_resource_manager :: proc(
 }
 
 run_resource_manager :: proc(manager: ^Resource_Manager) {
-  accumilator : od.bigfloat= od.bigfloat{0, 0}
+	accumilator: od.bigfloat = od.bigfloat{0, 0}
 	if manager.update {
 
 		for i in 0 ..< len(manager.base) {
-      accumilator = od.add(accumilator, manager.base[i])
+			accumilator = od.add(accumilator, manager.base[i])
 		}
 		for i in 0 ..< len(manager.multiplier) {
 			multiplier := od.add(manager.multiplier[i], od.bigfloat{1, 0})
@@ -53,7 +54,7 @@ run_resource_manager :: proc(manager: ^Resource_Manager) {
 		manager.cached_income = accumilator
 		manager.update = false
 	}
-	manager.output^ = od.add(manager.output^, manager.cached_income)
+	manager.output^ = od.add(manager.output^, od.mul(manager.cached_income, manager.external_multiplier^))
 }
 
 update_resource :: proc(

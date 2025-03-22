@@ -24,23 +24,31 @@ fractal_noise :: proc(pos: [2]i32, iterations: i32, zoom: f64, seed: i64) -> f32
 	return val_sum / m
 }
 
-random_num :: proc(seed: ^f64) -> f64{
-  new_seed := f64(noise.noise_2d(i64(seed^*100000), {f64(seed^*2),seed^}))
-  seed^ = new_seed*100000+1
-  return new_seed
+random_num :: proc(seed: ^f64) -> f64 {
+	new_seed := f64(noise.noise_2d(i64(seed^ * 100000), {f64(seed^ * 2), seed^}))
+	seed^ = new_seed * 100000 + 1
+	return new_seed
 
 }
 
-hash_string :: proc (str: string, hash: ^i64){
-  accumilator : i64 = 0
-  for char in str{
-    fmt.print(char)
-    accumilator = (accumilator ~ i64(char)) << 2
-  }
-  hash^ = accumilator
+hash_string :: proc(str: string, hash: ^i64) {
+	accumilator: i64 = 0
+	for char in str {
+		fmt.print(char)
+		accumilator = (accumilator ~ i64(char)) << 2
+	}
+	hash^ = accumilator
 }
 
-bfd :: proc(globalmap: ^map[[2]i32]bool,pos: [2]i32, mesh: mesh, min: f64) -> (map[[2]i32][2]i32, bool) {
+bfd :: proc(
+	globalmap: ^map[[2]i32]bool,
+	pos: [2]i32,
+	mesh: mesh,
+	min: f64,
+) -> (
+	map[[2]i32][2]i32,
+	bool,
+) {
 	check_in :: proc(pos: [2]i32, min, max: i32, output: map[[2]i32][2]i32) -> bool {
 		out := true
 		if pos.x < min {out = false}
@@ -93,7 +101,7 @@ bfd :: proc(globalmap: ^map[[2]i32]bool,pos: [2]i32, mesh: mesh, min: f64) -> (m
 				value_pos := mesh.array[pos.x + pos.y * mesh.size.x]
 				if value_pos > min {
 					output[pos] = pos
-          globalmap^[pos] = true
+					globalmap^[pos] = true
 					add_neighbours(output, &queue, pos, 0, mesh.size.x)
 				}
 			}
@@ -113,6 +121,7 @@ generate_objects_list_i32 :: proc(
 	set: [$T]i32,
 	seed: ^i64,
 	target: [2]i32,
+	zoom: f64 = 4,
 ) {
 	for x in set {
 		generate_objects_i32(
@@ -122,7 +131,8 @@ generate_objects_list_i32 :: proc(
 			range = range,
 			set = x,
 			target = target,
-      seed= seed,
+			seed = seed,
+			zoom = zoom,
 		)
 	}
 }
@@ -135,13 +145,17 @@ generate_objects_i32 :: proc(
 	set: i32,
 	seed: ^i64,
 	target: [2]i32,
+	zoom: f64 = 4,
 ) {
 	for y in 0 ..< mesh.size.y {
 		for x in 0 ..< mesh.size.x {
 			tile_type := i32(mesh.array[x + y * mesh.size.x] * 8)
 			if (target.x < tile_type) && (tile_type < target.y) {
 				percent :=
-					(noise.noise_2d(seed = seed^, coord = noise.Vec2{f64(x) / 4, f64(y) / 4}) +
+					(noise.noise_2d(
+							seed = seed^,
+							coord = noise.Vec2{f64(x) / zoom, f64(y) / zoom},
+						) +
 						1) /
 					2
 				percent *= percent
