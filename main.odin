@@ -25,6 +25,7 @@ Game_State :: struct {
 	tab_2:     Game_Tab_2,
 	slide:     bool,
 	seed:      f64,
+	seedi32:      i32,
 	frame:     i128,
 }
 
@@ -1155,6 +1156,17 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 	tablet_display(nl.Coord{418, 168}, game, tablets, window, mouse, 1)
 	tablet_display(nl.Coord{482, 168}, game, tablets, window, mouse, 2)
 	tablet_display(nl.Coord{546, 168}, game, tablets, window, mouse, 3)
+	nl.button_png_d_shake(
+		nl.Coord{300, 188},
+		{64, 64},
+		[2]string{"upg\\reroll1.png", "upg\\reroll2.png"},
+		window,
+		mouse^,
+		2,
+		&game.seedi32,
+		0,
+		2,
+	)
 	nl.draw_text(
 		game.tab_2.tablet_text,
 		nl.Coord{200, 300},
@@ -1268,9 +1280,7 @@ main :: proc() {
 			camera_zoom_speed = 0.3,
 			built_max = 2,
 		},
-    tab_2 = Game_Tab_2 {
-      upgrade_levels = make_slice([]i32,36)
-    }
+		tab_2 = Game_Tab_2{upgrade_levels = make_slice([]i32, 36)},
 	}
 	generate_objects(&game)
 

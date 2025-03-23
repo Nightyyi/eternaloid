@@ -260,7 +260,10 @@ button_png :: proc(
 	mouse: Mouse_Data,
 	rotation: f32 = 0,
 	size: f32 = 1,
-) -> (bool, bool){
+) -> (
+	bool,
+	bool,
+) {
 
 	on_button := in_hitbox(position, hitbox, mouse)
 	button_clicked := on_button && mouse.clicking
@@ -283,6 +286,46 @@ button_png :: proc(
 	return button_clicked, on_button
 }
 
+button_png_d_shake :: proc(
+	position: Coord,
+	hitbox: Coord,
+	png_name: [2]string,
+	window: ^Window_Data,
+	mouse: Mouse_Data,
+	shake: i32 = 2,
+	seed: ^i32,
+	rotation: f32 = 0,
+	size: f32 = 1,
+) -> (
+	bool,
+	bool,
+) {
+  t_pos : Coord = position
+	on_button := in_hitbox(position, hitbox, mouse)
+	button_clicked := on_button && mouse.clicking
+	which_texture: int = 0
+	if on_button {
+
+		shake_pos := position
+		seed^ = i32(((int(seed^) << 10 ~ 2151254221) >> 3) % 1241425)
+		t_pos.x += (seed^) % (shake * 2) - shake
+		seed^ = i32(((int(seed^) << 10 ~ 2151254221) >> 3) % 1241425)
+		t_pos.y += (seed^) % (shake * 2) - shake
+	}
+	if button_clicked {which_texture = 1}
+	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(t_pos, window^)
+	texture: rl.Texture = pull_texture(png_name[which_texture], &window.image_cache_map, size)
+
+	rl.DrawTextureEx(
+		texture,
+		rl.Vector2{f32(virtual_pos.x), f32(virtual_pos.y)},
+		rotation,
+		size * f32(virtual_ratio),
+		rl.Color{255, 255, 255, 255},
+	)
+
+	return button_clicked, on_button
+}
 
 button_png_t :: proc(
 	position: Coord,
