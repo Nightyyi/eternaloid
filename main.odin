@@ -161,7 +161,11 @@ global :: proc(game: ^Game_State) {
 				)
 			}
 			if (building_type == 2) {
-				cost.wood = od.bigfloat{2.5, 2}
+					cost.stone = odr.linear_growth(
+						od.normalize(od.bigfloat{f64(amount), 0}),
+						od.bigfloat{2.5, 2},
+						od.bigfloat{5, 0},
+					)
 			}
 			if (building_type == 3) {
 				if 2 < natural_tile && natural_tile < 7 {
@@ -300,10 +304,12 @@ global :: proc(game: ^Game_State) {
 		game.events.update_town = false
 	}
 
-	game.global.town_speed = od.sqrt(od.div(
-		od.mul(game.global.oid, od.add(od.sqrt(game.global.food), od.bigfloat{1, 0})),
-		od.normalize(od.bigfloat{game.global.total_entities + 1, 0}),
-	))
+	game.global.town_speed = od.sqrt(
+		od.div(
+			od.mul(game.global.oid, od.add(od.sqrt(game.global.food), od.bigfloat{1, 0})),
+			od.normalize(od.bigfloat{game.global.total_entities + 1, 0}),
+		),
+	)
 	if od.ls_than(game.global.town_speed, od.bigfloat{1, -1}) {
 		game.global.town_speed = od.bigfloat{1, -1}
 	}
@@ -693,7 +699,7 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 	building_button(
 		position = nl.Coord{106, 200},
 		png_name = "mine_bt_",
-		hold_png = "mine.png",
+		hold_png = "mine_lv0.png",
 		set_hold = 4,
 		game = game,
 		mouse = mouse,
@@ -1136,7 +1142,7 @@ main :: proc() {
 			multiplier = make_slice([]od.bigfloat, 0),
 			exponent = make_slice([]od.bigfloat, 0),
 			cached_income = od.bigfloat{0, 0},
-			external_multiplier = &global_resources.town_speed,
+			external_multiplier = &od.bigfloat{1, 0},
 		},
 	}
 

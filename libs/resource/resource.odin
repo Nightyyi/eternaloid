@@ -54,7 +54,10 @@ run_resource_manager :: proc(manager: ^Resource_Manager) {
 		manager.cached_income = accumilator
 		manager.update = false
 	}
-	manager.output^ = od.add(manager.output^, od.mul(manager.cached_income, manager.external_multiplier^))
+	manager.output^ = od.add(
+		manager.output^,
+		od.mul(manager.cached_income, manager.external_multiplier^),
+	)
 }
 
 update_resource :: proc(
