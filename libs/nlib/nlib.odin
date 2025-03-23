@@ -252,6 +252,38 @@ draw_png :: proc(
 	}
 }
 
+button_png :: proc(
+	position: Coord,
+	hitbox: Coord,
+	png_name: string,
+	window: ^Window_Data,
+	mouse: Mouse_Data,
+	rotation: f32 = 0,
+	size: f32 = 1,
+) -> (bool, bool){
+
+	on_button := in_hitbox(position, hitbox, mouse)
+	button_clicked := on_button && mouse.clicking
+	which_texture: int = 0
+
+	if on_button {which_texture = 1}
+	if button_clicked {which_texture = 2}
+
+	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)
+	texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
+
+	rl.DrawTextureEx(
+		texture,
+		rl.Vector2{f32(virtual_pos.x), f32(virtual_pos.y)},
+		rotation,
+		size * f32(virtual_ratio),
+		rl.Color{255, 255, 255, 255},
+	)
+
+	return button_clicked, on_button
+}
+
+
 button_png_t :: proc(
 	position: Coord,
 	hitbox: Coord,

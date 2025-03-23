@@ -5,6 +5,7 @@ import nl "libs/nlib"
 import od "libs/odinium"
 import odr "libs/odinium_cost"
 import rsc "libs/resource"
+import tex "libs/text"
 import rl "vendor:raylib"
 
 import "core:encoding/json"
@@ -21,11 +22,11 @@ Game_State :: struct {
 	events:    Events,
 	tab_state: i32,
 	tab_1:     Game_Tab_1,
+	tab_2:     Game_Tab_2,
 	slide:     bool,
 	seed:      f64,
 	frame:     i128,
 }
-
 
 Global_Data :: struct {
 	entities:       []i32,
@@ -51,6 +52,13 @@ Events :: struct {
 	update_fog:  bool,
 }
 
+cost_resources :: struct {
+	oid:   od.bigfloat,
+	wood:  od.bigfloat,
+	food:  od.bigfloat,
+	stone: od.bigfloat,
+}
+
 Game_Tab_1 :: struct {
 	camera:             nl.Coord,
 	camera_real:        nl.Coord,
@@ -74,6 +82,17 @@ Game_Tab_1 :: struct {
 	built_max:          i32,
 	building_info:      string,
 }
+
+
+Game_Tab_2 :: struct {
+	upgrade_levels:  []i32,
+	choose:          [4]i32,
+	tablet_text:     string,
+	tablet_text_buf: [60]u8,
+	reroll:          bool,
+	rerolled:        bool,
+}
+
 
 // settings tab
 
@@ -131,13 +150,6 @@ global :: proc(game: ^Game_State) {
 
 
 	buy_building :: proc(building_type: i32, game: ^Game_State, index: int) {
-		cost_resources :: struct {
-			oid:   od.bigfloat,
-			wood:  od.bigfloat,
-			food:  od.bigfloat,
-			stone: od.bigfloat,
-		}
-
 		cost_building :: proc(
 			building_type: i32,
 			amount: i32,
@@ -161,11 +173,11 @@ global :: proc(game: ^Game_State) {
 				)
 			}
 			if (building_type == 2) {
-					cost.stone = odr.linear_growth(
-						od.normalize(od.bigfloat{f64(amount), 0}),
-						od.bigfloat{2.5, 2},
-						od.bigfloat{5, 0},
-					)
+				cost.stone = odr.linear_growth(
+					od.normalize(od.bigfloat{f64(amount), 0}),
+					od.bigfloat{2.5, 2},
+					od.bigfloat{2.5, 2},
+				)
 			}
 			if (building_type == 3) {
 				if 2 < natural_tile && natural_tile < 7 {
@@ -345,8 +357,6 @@ generate_spawn :: proc(game: ^Game_State) {
 	}
 	game.events.update_fog = true
 }
-
-
 // all town tab stuff
 draw_all_tiles :: proc(
 	tile_data: $T,
@@ -726,7 +736,6 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 	)
 }
 
-
 town_tab :: proc(
 	game: ^Game_State,
 	window: ^nl.Window_Data,
@@ -1023,6 +1032,15 @@ side_bar_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_
 		mouse = mouse,
 		size = 2,
 	) {game.tab_state = 1}
+	clicked, hover := nl.button_png_auto(
+		position = nl.Coord{0, 128},
+		hitbox = nl.Coord{64, 64},
+		png_name = "tab_upg_",
+		window = window,
+		mouse = mouse,
+		size = 2,
+	)
+	if clicked {game.tab_state = 2}
 
 }
 
@@ -1062,6 +1080,89 @@ process_inputs :: proc(game: ^Game_State) {
 				// game.tab_1.camera += {i32(margin.x), i32(margin.y)}
 			}
 		}}
+}
+
+upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mouse_Data) {
+	tablet_display :: proc(
+		position: nl.Coord,
+		game: ^Game_State,
+		tablets: []string,
+		window: ^nl.Window_Data,
+		mouse: ^nl.Mouse_Data,
+		index: i32,
+	) {
+		c, h := nl.button_png(
+			position,
+			nl.Coord{64, 64},
+			tablets[game.tab_2.choose[index]],
+			window,
+			mouse^,
+			0,
+			2,
+		)
+		if h {
+			cost, text := tex.get_tablet_text(
+				game.tab_2.choose[index],
+				game.tab_2.upgrade_levels[game.tab_2.choose[index]],
+				game.tab_2.tablet_text_buf[:],
+			)
+			game.tab_2.tablet_text = text
+		}
+
+	}
+
+	tablets := []string {
+		"upg\\food_1.png",
+		"upg\\food_2.png",
+		"upg\\food_3.png",
+		"upg\\food_4.png",
+		"upg\\food_5.png",
+		"upg\\food_6.png",
+		"upg\\food_7.png",
+		"upg\\food_8.png",
+		"upg\\food_9.png",
+		"upg\\oid_1.png",
+		"upg\\oid_2.png",
+		"upg\\oid_3.png",
+		"upg\\oid_4.png",
+		"upg\\oid_5.png",
+		"upg\\oid_6.png",
+		"upg\\oid_7.png",
+		"upg\\oid_8.png",
+		"upg\\oid_9.png",
+		"upg\\wood_1.png",
+		"upg\\wood_2.png",
+		"upg\\wood_3.png",
+		"upg\\wood_4.png",
+		"upg\\wood_5.png",
+		"upg\\wood_6.png",
+		"upg\\wood_7.png",
+		"upg\\wood_8.png",
+		"upg\\wood_9.png",
+		"upg\\stone_1.png",
+		"upg\\stone_2.png",
+		"upg\\stone_3.png",
+		"upg\\stone_4.png",
+		"upg\\stone_5.png",
+		"upg\\stone_6.png",
+		"upg\\stone_7.png",
+		"upg\\stone_8.png",
+		"upg\\stone_9.png",
+	}
+
+
+	tablet_display(nl.Coord{354, 168}, game, tablets, window, mouse, 0)
+	tablet_display(nl.Coord{418, 168}, game, tablets, window, mouse, 1)
+	tablet_display(nl.Coord{482, 168}, game, tablets, window, mouse, 2)
+	tablet_display(nl.Coord{546, 168}, game, tablets, window, mouse, 3)
+	nl.draw_text(
+		game.tab_2.tablet_text,
+		nl.Coord{200, 300},
+		1,
+		rl.Color{255, 255, 255, 255},
+		20,
+		window^,
+	)
 }
 
 main :: proc() {
@@ -1106,7 +1207,7 @@ main :: proc() {
 		oid          = od.bigfloat{0, 0},
 		oid_max      = od.bigfloat{0, 0},
 		wood         = od.bigfloat{5, 3},
-		stone        = od.bigfloat{0, 0},
+		stone        = od.bigfloat{2.5, 2},
 		food         = od.bigfloat{0, 0},
 		global_speed = od.bigfloat{1, 0},
 		town_speed   = od.bigfloat{0, 0},
@@ -1167,6 +1268,9 @@ main :: proc() {
 			camera_zoom_speed = 0.3,
 			built_max = 2,
 		},
+    tab_2 = Game_Tab_2 {
+      upgrade_levels = make_slice([]i32,36)
+    }
 	}
 	generate_objects(&game)
 
@@ -1185,9 +1289,7 @@ main :: proc() {
 					append(&game.tab_1.continent_sizes, highlighted_bfd)
 				}
 			}
-
 		}
-
 	}
 
 	generate_spawn(&game)
@@ -1213,6 +1315,8 @@ main :: proc() {
 			settings_tab(window = &window, mouse = mouse, game = &game)
 		} else if (game.tab_state == 1) {
 			town_tab(game = &game, window = &window, mouse = mouse, shader = shader)
+		} else if (game.tab_state == 2) {
+			upgrades_tab(game = &game, window = &window, mouse = &mouse)
 		}
 		nl.draw_borders(window)
 		rl.EndDrawing()
