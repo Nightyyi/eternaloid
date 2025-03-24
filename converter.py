@@ -12,7 +12,7 @@ def mprint(string):
     if print_text:
         print(string)
 
-
+mprint(list_of_sprites)
 
 parser = argparse.ArgumentParser(
                     prog='ProgramName',
@@ -26,14 +26,10 @@ args = parser.parse_args()
 if args.silent:
     print_text = False
 
-
-
-
-
 temp_list = []
 for sprite in list_of_sprites:
     if not (str(sprite) in omit_list):
-        temp_list.append(temp_list)
+        temp_list.append(sprite)
         
 list_of_sprites = temp_list
 
@@ -43,7 +39,6 @@ if len(list_of_sprites) == 0:
 
 for sprite in list_of_sprites:
     mprint(str(sprite))
-
 if not args.silent:
     run = True
     while run:
@@ -63,9 +58,9 @@ for sprite in list_of_sprites:
     sliced_sprite = str(sprite).split(".")
 
     subprocess.call(["aseprite", "-b", str(sprite), "--save-as", sliced_sprite[0]+".png"])
-    mprint(str(sprite),"done being converted")
+    mprint(str(sprite) +" done being converted")
     
     source = str(current_directory / sprite)
     destination = str(current_directory)+"\\aseprites\\"
     shutil.move(source, destination)
-    mprint(source, "->", destination)
+    mprint(source + " -> " + destination)

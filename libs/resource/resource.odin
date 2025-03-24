@@ -76,3 +76,7 @@ update_resource :: proc(
 		manager.base[index] = set_val
 	}
 }
+
+subtract_m :: proc(manager: ^Resource_Manager, sub: od.bigfloat) {
+	manager.output^ = od.sub(manager.output^, sub)
+}
