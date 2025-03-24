@@ -691,7 +691,7 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 
 	}
 	building_button(
-		position = nl.Coord{10, 200},
+		position = nl.Coord{84, 200},
 		png_name = "house_bt_",
 		hold_png = "house_lv0.png",
 		set_hold = 1,
@@ -701,7 +701,7 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 		hover_info = "House",
 	)
 	building_button(
-		position = nl.Coord{42, 200},
+		position = nl.Coord{116, 200},
 		png_name = "tower_bt_",
 		hold_png = "tower.png",
 		set_hold = 2,
@@ -711,7 +711,7 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 		hover_info = "Watch Tower",
 	)
 	building_button(
-		position = nl.Coord{74, 200},
+		position = nl.Coord{148, 200},
 		png_name = "woodmill_bt_",
 		hold_png = "woodmill.png",
 		set_hold = 3,
@@ -721,7 +721,7 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 		hover_info = "Woodmill",
 	)
 	building_button(
-		position = nl.Coord{106, 200},
+		position = nl.Coord{180, 200},
 		png_name = "mine_bt_",
 		hold_png = "mine_lv0.png",
 		set_hold = 4,
@@ -731,7 +731,7 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 		hover_info = "Mine",
 	)
 	building_button(
-		position = nl.Coord{138, 200},
+		position = nl.Coord{212, 200},
 		png_name = "field_bt_",
 		hold_png = "field.png",
 		set_hold = 5,
@@ -742,7 +742,7 @@ building_select_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: n
 	)
 	nl.draw_text(
 		game.tab_1.building_info,
-		nl.Coord{10, 300},
+		nl.Coord{80, 300},
 		1,
 		rl.Color{255, 255, 255, 255},
 		10,
@@ -1497,8 +1497,8 @@ main :: proc() {
 
 	generate_spawn(&game)
 
-	muisc_bro := rl.LoadMusicStream("music/rager.wav")
-	rl.PlayMusicStream(muisc_bro)
+	music := rl.LoadMusicStream("music/shimmer.wav")
+	rl.PlayMusicStream(music)
 	rl.SetAudioStreamBufferSizeDefault(10000)
 	game.tab_1.test_data = &global_map
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
@@ -1508,6 +1508,7 @@ main :: proc() {
 	game.events.particles_start = true
 	for !rl.WindowShouldClose() {
 
+    rl.UpdateMusicStream(music)
 
 		if rl.IsWindowResized() {
 			window.present_size = nl.Coord{rl.GetScreenWidth(), rl.GetScreenHeight()}
@@ -1561,4 +1562,7 @@ main :: proc() {
 	delete(global_resource_managers.stone.base)
 	delete(global_resource_managers.stone.multiplier)
 	delete(global_resource_managers.stone.exponent)
+	delete(global_resource_managers.elixir.base)
+	delete(global_resource_managers.elixir.multiplier)
+	delete(global_resource_managers.elixir.exponent)
 }
