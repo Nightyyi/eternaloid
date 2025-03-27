@@ -252,6 +252,47 @@ draw_png :: proc(
 	}
 }
 
+draw_png_centered :: proc(
+	position: Coord,
+	png_name: string,
+	window: ^Window_Data,
+	size: f32 = 1,
+	rotation: f32 = 0,
+	color: rl.Color = rl.Color{255, 255, 255, 255},
+) {
+	draw := true
+	if (position.x > window.original_size.x) {draw = false}
+	if (position.y > window.original_size.y) {draw = false}
+	if (png_name != "") {
+		texture: rl.Texture = pull_texture(png_name, &window.image_cache_map, size)
+		virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window^)
+		rl.DrawTextureEx(
+			texture,
+			rl.Vector2 {
+				f32(virtual_pos.x) - f32(texture.width) / 2 * f32(virtual_ratio),
+				f32(virtual_pos.y) - f32(texture.height) / 2 * f32(virtual_ratio),
+			},
+			rotation,
+			size * f32(virtual_ratio),
+			color,
+		)
+	}
+}
+
+spline_2p :: proc(p1, p2: Coord, n: f64) -> Coord {
+	x := f64(p1.x) * (n - 1) + f64(p2.x) * n
+	y := f64(p1.y) * (n - 1) + f64(p2.y) * n
+	return Coord{i32(x), i32(y)}
+}
+
+spline_3p :: proc(p1, p2, p3: Coord, n: f64) -> Coord {
+	x :=
+		(f64(p1.x) * (1 - n) + f64(p2.x) * n) * (1 - n) + (f64(p2.x) * (1 - n) + f64(p3.x) * n) * n
+	y :=                                                                   
+		(f64(p1.y) * (1 - n) + f64(p2.y) * n) * (1 - n) + (f64(p2.y) * (1 - n) + f64(p3.y) * n) * n
+  return Coord{i32(x), i32(y)}
+}
+
 button_png :: proc(
 	position: Coord,
 	hitbox: Coord,
@@ -447,24 +488,18 @@ begin_draw_area :: proc(pos: Coord, size: Coord, window: Window_Data) {
 	)
 }
 
-mouse_cursor :: proc(
-	window: ^Window_Data,
-	mouse: Mouse_Data,
-	rotation: f32 = 0,
-	size: f32 = 1,
-){
+mouse_cursor :: proc(window: ^Window_Data, mouse: Mouse_Data, rotation: f32 = 0, size: f32 = 1) {
 
 	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(mouse.pos, window^)
-  texture : rl.Texture
+	texture: rl.Texture
 	buf: [32]u8
-  if !mouse.hold && mouse.clicking{
-	texture = pull_texture("mouse\\click.png", &window.image_cache_map, size)
-  }
-  else if mouse.hold{
-	texture = pull_texture("mouse\\hold.png", &window.image_cache_map, size)
-  } else {
-	texture = pull_texture("mouse\\idle.png", &window.image_cache_map, size)
-  }
+	if !mouse.hold && mouse.clicking {
+		texture = pull_texture("mouse\\click.png", &window.image_cache_map, size)
+	} else if mouse.hold {
+		texture = pull_texture("mouse\\hold.png", &window.image_cache_map, size)
+	} else {
+		texture = pull_texture("mouse\\idle.png", &window.image_cache_map, size)
+	}
 
 	rl.DrawTextureEx(
 		texture,
@@ -474,5 +509,3 @@ mouse_cursor :: proc(
 		rl.Color{255, 255, 255, 255},
 	)
 }
-
-

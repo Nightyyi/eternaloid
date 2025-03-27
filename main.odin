@@ -19,11 +19,11 @@ import tim "core:time"
 Game_State :: struct {
 	global:    ^Global_Data,
 	global_m:  Global_Resource,
-	particles: Particles,
 	events:    Events,
 	tab_state: i32,
 	tab_1:     Game_Tab_1,
 	tab_2:     Game_Tab_2,
+	tab_3:     Game_Tab_3,
 	slide:     bool,
 	seed:      f64,
 	seedi32:   i32,
@@ -43,10 +43,6 @@ Global_Data :: struct {
 	elixir:         od.bigfloat,
 }
 
-Particles :: struct {
-	glowing_particles:     [1000]nl.Coord,
-	glowing_particles_vel: [1000]nl.Coord,
-}
 
 Global_Resource :: struct {
 	oid:    rsc.Resource_Manager,
@@ -57,10 +53,9 @@ Global_Resource :: struct {
 }
 
 Events :: struct {
-	update_town:     bool,
-	update_fog:      bool,
-	reroll:          bool,
-	particles_start: bool,
+	update_town: bool,
+	update_fog:  bool,
+	reroll:      bool,
 }
 
 cost_resources :: struct {
@@ -107,6 +102,10 @@ Game_Tab_2 :: struct {
 	builders_plus:    [4]i32,
 }
 
+Game_Tab_3 :: struct {
+	pos_interpolate: f64,
+	on_deity:        i32,
+}
 
 // settings tab
 
@@ -1062,6 +1061,16 @@ side_bar_tab :: proc(window: ^nl.Window_Data, mouse: nl.Mouse_Data, game: ^Game_
 		size = 2,
 	)
 	if clicked {game.tab_state = 2}
+	clicked, hover = nl.button_png_auto(
+		position = nl.Coord{0, 192},
+		hitbox = nl.Coord{64, 64},
+		png_name = "tab_sac_",
+		window = window,
+		mouse = mouse,
+		size = 2,
+	)
+	if clicked {game.tab_state = 3}
+
 
 }
 
@@ -1118,9 +1127,9 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 			rsc.update_resource(&game.global_m.wood, temp, 2, rsc.Boost_Type.multiplier)
 			temp = od.bigfloat{1, i128(level)}
 			rsc.update_resource(&game.global_m.elixir, temp, 0, rsc.Boost_Type.multiplier)
-		/*case 3:
+		case 3:
 			cost := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, cost, 0, rsc.Boost_Type.multiplier)*/
+			rsc.update_resource(&game.global_m.oid, cost, 0, rsc.Boost_Type.multiplier)
 		case 4:
 			cost := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
 			rsc.update_resource(&game.global_m.oid, cost, 0, rsc.Boost_Type.multiplier)
@@ -1169,6 +1178,7 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 							game.tab_2.upgrade_levels[game.tab_2.choose[index]],
 							game,
 						)
+						game.tab_2.rerolled = false
 					}
 				}
 			}
@@ -1189,12 +1199,12 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 			index_v := (index + int(game.frame) / 10) % 36
 			level := game.tab_2.upgrade_levels[index_v]
 			if level != 0 {
-				pos := nl.Coord{x * 64 + 80, y * 64 + 20}
+				pos := nl.Coord{x * 64 + 102, y * 64 + 20}
 				hover := nl.in_hitbox(pos, nl.Coord{64, 64}, mouse^)
 				col: u8 = 100
 				if hover {col = 255
 					cost, text, rtype := tex.get_tablet_text(
-						i32(index),
+						i32(index_v),
 						game.tab_2.upgrade_levels[index_v],
 						game.tab_2.tablet_text_buf[:],
 					)
@@ -1202,7 +1212,7 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 				}
 				nl.draw_png(pos, tablets[index_v], window, 2, 0, rl.Color{col, col, col, 255})
 				x += 1
-				if x > 9 {
+				if x > 11 {
 					x = 0
 					y += 1
 				}
@@ -1222,11 +1232,12 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 			game.seedi32 = i32(((int(game.seedi32) << 10 ~ 2151254221) >> 3) % 1241425)
 			game.tab_2.choose[3] = game.seedi32 % 36
 			game.events.reroll = false
-			game.tab_2.bounce -= 15
+			game.tab_2.bounce -= 100
 		} else {
 			if game.tab_2.bounce != 0 {
 				game.tab_2.bounce += 1
-				game.tab_2.bounce /= 2
+				game.tab_2.bounce *= 4
+				game.tab_2.bounce /= 5
 			}
 		}
 	}
@@ -1270,14 +1281,15 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 		"upg\\stone_9.png",
 	}
 	display_tablets(game, tablets, window, mouse)
-	tablet_display(nl.Coord{354, 168 - game.tab_2.bounce}, game, tablets, window, mouse, 0)
-	tablet_display(nl.Coord{418, 168 - game.tab_2.bounce}, game, tablets, window, mouse, 1)
-	tablet_display(nl.Coord{482, 168 - game.tab_2.bounce}, game, tablets, window, mouse, 2)
-	tablet_display(nl.Coord{546, 168 - game.tab_2.bounce}, game, tablets, window, mouse, 3)
+	nl.draw_png(nl.Coord{72, 400 - 128}, "upg\\bar.png", window, 2)
+	tablet_display(nl.Coord{354, 308 - game.tab_2.bounce}, game, tablets, window, mouse, 0)
+	tablet_display(nl.Coord{418, 308 - game.tab_2.bounce}, game, tablets, window, mouse, 1)
+	tablet_display(nl.Coord{482, 308 - game.tab_2.bounce}, game, tablets, window, mouse, 2)
+	tablet_display(nl.Coord{546, 308 - game.tab_2.bounce}, game, tablets, window, mouse, 3)
 
 	reroll_tablets(game)
 	c, h := nl.button_png_d_shake(
-		nl.Coord{300, 188},
+		nl.Coord{200, 308},
 		{64, 64},
 		[2]string{"upg\\reroll1.png", "upg\\reroll2.png"},
 		window,
@@ -1287,12 +1299,15 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 		0,
 		2,
 	)
-	if c {game.events.reroll = true}
+	if c && !game.tab_2.rerolled {
+		game.events.reroll = true
+		game.tab_2.rerolled = true
+	}
 
 
 	nl.draw_text(
 		game.tab_2.tablet_text,
-		nl.Coord{200, 300},
+		nl.Coord{200, 100},
 		1,
 		rl.Color{255, 255, 255, 255},
 		20,
@@ -1300,63 +1315,31 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 	)
 }
 
-particle_manager :: proc(game: ^Game_State, window: ^nl.Window_Data) {
-	populate_particles :: proc(game: ^Game_State) {
-		if game.events.particles_start {
-			for index in 0 ..< 1000 {
-				game.seedi32 = i32(((int(game.seedi32) << 10 ~ 2151254221) >> 3) % 1241425)
-				game.particles.glowing_particles[index].x = game.seedi32 % 900
-				game.seedi32 = i32(((int(game.seedi32) << 10 ~ 2151254221) >> 3) % 1241425)
-				game.particles.glowing_particles[index].y = game.seedi32 % 400
-				game.seedi32 = i32(((int(game.seedi32) << 10 ~ 2151254221) >> 3) % 1241425)
-				game.particles.glowing_particles_vel[index].x = (game.seedi32 % 4) - 2
-				game.seedi32 = i32(((int(game.seedi32) << 10 ~ 2151254221) >> 3) % 1241425)
-				game.particles.glowing_particles_vel[index].y = (game.seedi32 % 4) - 2
-				game.events.particles_start = false
-			}
-		}
+sacrifice_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mouse_Data) {
+	display_deities :: proc(game: ^Game_State, window: ^nl.Window_Data) {
+		deity_pngs := []string{"sac\\good.png", "", ""}
+		pos1 := nl.Coord{414-207, 250}
+		pos_mid1 := nl.Coord{414-207, 200}
+		pos2 := nl.Coord{414, 250}
+		pos_mid2 := nl.Coord{414, 200}
+		pos3 := nl.Coord{414+207, 250}
+		pos_mid3 := nl.Coord{414, 200}
+		pos4 := nl.Coord{414, 400}
 
+
+		deity_pos1 := nl.spline_3p(pos1, pos_mid1, pos2, game.tab_3.pos_interpolate)
+		deity_pos2 := nl.spline_3p(pos2, pos_mid2, pos3, game.tab_3.pos_interpolate)
+		deity_pos3 := nl.spline_3p(pos3, pos_mid3, pos4, game.tab_3.pos_interpolate)
+
+		nl.draw_png_centered(deity_pos1, deity_pngs[game.tab_3.on_deity], window, 2)
+		nl.draw_png_centered(deity_pos2, deity_pngs[game.tab_3.on_deity + 1], window, 2)
+		nl.draw_png_centered(deity_pos3, deity_pngs[game.tab_3.on_deity + 2], window, 2)
+    game.tab_3.pos_interpolate = (game.tab_3.pos_interpolate + 0.01) 
+    if game.tab_3.pos_interpolate > 1{
+      game.tab_3.pos_interpolate = 0
+    }
 	}
-
-	particle_physics :: proc(game: ^Game_State, window: ^nl.Window_Data) {
-		for index in 0 ..< 1000 {
-			if game.particles.glowing_particles[index].x < 0 {
-				game.particles.glowing_particles[index].x = 0
-				game.particles.glowing_particles_vel[index].x *= -1
-			}
-			if game.particles.glowing_particles[index].x > 897 {
-				game.particles.glowing_particles[index].x = 896
-				game.particles.glowing_particles_vel[index].x *= -1
-			}
-			if game.particles.glowing_particles[index].y < 0 {
-				game.particles.glowing_particles[index].y = 0
-				game.particles.glowing_particles_vel[index].y *= -1
-			}
-			if game.particles.glowing_particles[index].y > 397 {
-				game.particles.glowing_particles[index].y = 396
-				game.particles.glowing_particles_vel[index].y *= -1
-			}
-			if game.frame % 1 == 0 {
-				game.particles.glowing_particles[index] +=
-					game.particles.glowing_particles_vel[index]
-
-			}
-			nl.draw_png(
-				game.particles.glowing_particles[index],
-				"particles\\white.png",
-				window,
-				1,
-				0,
-				rl.Color{255, 255, 255, 255},
-			)
-
-
-		}
-	}
-	populate_particles(game)
-	particle_physics(game, window)
-
-
+	display_deities(game, window)
 }
 
 main :: proc() {
@@ -1473,6 +1456,7 @@ main :: proc() {
 			built_max = 2,
 		},
 		tab_2 = Game_Tab_2{upgrade_levels = make_slice([]i32, 36)},
+    tab_3 = Game_Tab_3{pos_interpolate= 0,on_deity=0},
 		seedi32 = i32(seed),
 	}
 	generate_objects(&game)
@@ -1505,10 +1489,9 @@ main :: proc() {
 	defer rl.UnloadShader(shader)
 	game.events.update_town = true
 	game.events.reroll = true
-	game.events.particles_start = true
 	for !rl.WindowShouldClose() {
 
-    rl.UpdateMusicStream(music)
+		rl.UpdateMusicStream(music)
 
 		if rl.IsWindowResized() {
 			window.present_size = nl.Coord{rl.GetScreenWidth(), rl.GetScreenHeight()}
@@ -1529,6 +1512,8 @@ main :: proc() {
 			town_tab(game = &game, window = &window, mouse = mouse, shader = shader)
 		} else if (game.tab_state == 2) {
 			upgrades_tab(game = &game, window = &window, mouse = &mouse)
+		} else if (game.tab_state == 3) {
+			sacrifice_tab(&game, &window, &mouse)
 		}
 		nl.draw_borders(window)
 		nl.mouse_cursor(&window, mouse, 0, 2)
