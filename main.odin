@@ -43,7 +43,6 @@ Global_Data :: struct {
 	elixir:         od.bigfloat,
 }
 
-
 Global_Resource :: struct {
 	oid:    rsc.Resource_Manager,
 	wood:   rsc.Resource_Manager,
@@ -1121,15 +1120,14 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 			rsc.update_resource(&game.global_m.wood, temp, 0, rsc.Boost_Type.multiplier)
 		case 1:
 			temp := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, temp, 0, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.oid, temp, 1, rsc.Boost_Type.multiplier)
 		case 2:
 			temp := od.bigfloat{1, i128(level) * -2}
 			rsc.update_resource(&game.global_m.wood, temp, 2, rsc.Boost_Type.multiplier)
 			temp = od.bigfloat{1, i128(level)}
 			rsc.update_resource(&game.global_m.elixir, temp, 0, rsc.Boost_Type.multiplier)
 		case 3:
-			cost := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, cost, 0, rsc.Boost_Type.multiplier)
+    // placeholder
 		case 4:
 			cost := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
 			rsc.update_resource(&game.global_m.oid, cost, 0, rsc.Boost_Type.multiplier)
@@ -1139,7 +1137,30 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 			game.tab_2.tower_sight_plus[0] = level
 		case 7:
 			game.tab_2.tower_sight_plus[0] = level
+
+
+		case 9:
+			temp := od.pow_bfbf(od.bigfloat{2, 0}, od.bigfloat{f64(level), 0})
+			rsc.update_resource(&game.global_m.oid, temp, 0, rsc.Boost_Type.multiplier)
+		case 10:
+			temp := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
+			rsc.update_resource(&game.global_m.food, temp, 1, rsc.Boost_Type.multiplier)
+		case 11:
+      temp := od.bigfloat{1, i128(level)}
+			rsc.update_resource(&game.global_m.elixir, temp, 1, rsc.Boost_Type.multiplier)
+		case 12:
+    // placeholder
+		case 13:
+			cost := od.pow_bfbf(od.bigfloat{2, 0}, od.bigfloat{f64(level), 0})
+			rsc.update_resource(&game.global_m.elixir, cost, 0, rsc.Boost_Type.multiplier)
+		case 14:
+			game.tab_2.builders_plus[1] = level
+		case 15:
+			game.tab_2.tower_sight_plus[1] = level
+		case 16:
+			game.tab_2.tower_sight_plus[1] = level
 		}
+
 	}
 
 	tablet_display :: proc(
@@ -1243,24 +1264,6 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 	}
 
 	tablets := []string {
-		"upg\\food_1.png",
-		"upg\\food_2.png",
-		"upg\\food_3.png",
-		"upg\\food_4.png",
-		"upg\\food_5.png",
-		"upg\\food_6.png",
-		"upg\\food_7.png",
-		"upg\\food_8.png",
-		"upg\\food_9.png",
-		"upg\\oid_1.png",
-		"upg\\oid_2.png",
-		"upg\\oid_3.png",
-		"upg\\oid_4.png",
-		"upg\\oid_5.png",
-		"upg\\oid_6.png",
-		"upg\\oid_7.png",
-		"upg\\oid_8.png",
-		"upg\\oid_9.png",
 		"upg\\wood_1.png",
 		"upg\\wood_2.png",
 		"upg\\wood_3.png",
@@ -1270,6 +1273,24 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 		"upg\\wood_7.png",
 		"upg\\wood_8.png",
 		"upg\\wood_9.png",
+		"upg\\oid_1.png",
+		"upg\\oid_2.png",
+		"upg\\oid_3.png",
+		"upg\\oid_4.png",
+		"upg\\oid_5.png",
+		"upg\\oid_6.png",
+		"upg\\oid_7.png",
+		"upg\\oid_8.png",
+		"upg\\oid_9.png",
+		"upg\\food_1.png",
+		"upg\\food_2.png",
+		"upg\\food_3.png",
+		"upg\\food_4.png",
+		"upg\\food_5.png",
+		"upg\\food_6.png",
+		"upg\\food_7.png",
+		"upg\\food_8.png",
+		"upg\\food_9.png",
 		"upg\\stone_1.png",
 		"upg\\stone_2.png",
 		"upg\\stone_3.png",
@@ -1316,31 +1337,13 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 }
 
 sacrifice_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mouse_Data) {
-	display_deities :: proc(game: ^Game_State, window: ^nl.Window_Data) {
-		deity_pngs := []string{"sac\\good.png", "", ""}
-		pos1 := nl.Coord{414-207, 250}
-		pos_mid1 := nl.Coord{414-207, 200}
-		pos2 := nl.Coord{414, 250}
-		pos_mid2 := nl.Coord{414, 200}
-		pos3 := nl.Coord{414+207, 250}
-		pos_mid3 := nl.Coord{414, 200}
-		pos4 := nl.Coord{414, 400}
+
+	nl.draw_png(nl.Coord{72, 0}, "sac\\tab.png", window, 2)
 
 
-		deity_pos1 := nl.spline_3p(pos1, pos_mid1, pos2, game.tab_3.pos_interpolate)
-		deity_pos2 := nl.spline_3p(pos2, pos_mid2, pos3, game.tab_3.pos_interpolate)
-		deity_pos3 := nl.spline_3p(pos3, pos_mid3, pos4, game.tab_3.pos_interpolate)
-
-		nl.draw_png_centered(deity_pos1, deity_pngs[game.tab_3.on_deity], window, 2)
-		nl.draw_png_centered(deity_pos2, deity_pngs[game.tab_3.on_deity + 1], window, 2)
-		nl.draw_png_centered(deity_pos3, deity_pngs[game.tab_3.on_deity + 2], window, 2)
-    game.tab_3.pos_interpolate = (game.tab_3.pos_interpolate + 0.01) 
-    if game.tab_3.pos_interpolate > 1{
-      game.tab_3.pos_interpolate = 0
-    }
-	}
-	display_deities(game, window)
+	// display_deities(game, window)
 }
+
 
 main :: proc() {
 	when ODIN_DEBUG {
@@ -1456,7 +1459,7 @@ main :: proc() {
 			built_max = 2,
 		},
 		tab_2 = Game_Tab_2{upgrade_levels = make_slice([]i32, 36)},
-    tab_3 = Game_Tab_3{pos_interpolate= 0,on_deity=0},
+		tab_3 = Game_Tab_3{pos_interpolate = 0, on_deity = 0},
 		seedi32 = i32(seed),
 	}
 	generate_objects(&game)
@@ -1486,22 +1489,26 @@ main :: proc() {
 	rl.SetAudioStreamBufferSizeDefault(10000)
 	game.tab_1.test_data = &global_map
 	shader := rl.LoadShader("", "shaders/pixel_filter.glsl")
+	bloom_shader := rl.LoadShader("", "shaders/bloom.glsl")
+
 	defer rl.UnloadShader(shader)
 	game.events.update_town = true
 	game.events.reroll = true
+	target := rl.LoadRenderTexture(window.present_size.x, window.present_size.y)
 	for !rl.WindowShouldClose() {
 
 		rl.UpdateMusicStream(music)
 
 		if rl.IsWindowResized() {
+
 			window.present_size = nl.Coord{rl.GetScreenWidth(), rl.GetScreenHeight()}
+			target = rl.LoadRenderTexture(window.present_size.x, window.present_size.y)
 		}
 		process_inputs(&game)
-		nl.update_mouse(&mouse, window)
 
-		rl.BeginDrawing()
-
+		rl.BeginTextureMode(target)
 		rl.ClearBackground(rl.Color{49, 36, 58, 255})
+		nl.update_mouse(&mouse, window)
 		nl.draw_rectangle(nl.Coord{0, 0}, nl.Coord{70, 400}, window, rl.Color{33, 31, 50, 255})
 		nl.draw_rectangle(nl.Coord{70, 0}, nl.Coord{2, 400}, window, rl.Color{255, 255, 255, 255})
 
@@ -1517,10 +1524,23 @@ main :: proc() {
 		}
 		nl.draw_borders(window)
 		nl.mouse_cursor(&window, mouse, 0, 2)
-		rl.EndDrawing()
 		animate_textures(window = &window, frame = game.frame)
 		global(&game)
+		rl.EndTextureMode()
 		game.frame += 1
+
+		rl.BeginDrawing()
+		rl.ClearBackground(rl.Color{0, 0, 0, 255})
+		rl.BeginShaderMode(bloom_shader)
+		rl.DrawTextureRec(
+			target.texture,
+			rl.Rectangle{0, 0, f32(window.present_size.x), f32(-window.present_size.y)},
+			[2]f32{0, 0},
+			rl.Color{255, 255, 255, 255},
+		)
+		rl.EndShaderMode()
+		rl.EndDrawing()
+
 	}
 	delete(window.image_cache_map)
 	delete(game.tab_1.tile_data)
@@ -1534,7 +1554,6 @@ main :: proc() {
 	}
 	delete(game.tab_1.continent_sizes)
 	delete(global_map)
-
 	delete(global_resource_managers.oid.base)
 	delete(global_resource_managers.oid.multiplier)
 	delete(global_resource_managers.oid.exponent)

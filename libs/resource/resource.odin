@@ -17,6 +17,8 @@ Resource_Manager :: struct {
 	cached_income:       od.bigfloat,
 	external_multiplier: ^od.bigfloat,
 	update:              bool,
+	indexes:             [3]i32,
+	static:              bool,
 }
 
 create_resource_manager :: proc(
@@ -36,8 +38,8 @@ create_resource_manager :: proc(
 }
 
 run_resource_manager :: proc(manager: ^Resource_Manager) {
-	accumilator: od.bigfloat = od.bigfloat{0, 0}
 	if manager.update {
+		accumilator: od.bigfloat = od.bigfloat{0, 0}
 
 		for i in 0 ..< len(manager.base) {
 			accumilator = od.add(accumilator, manager.base[i])
@@ -46,34 +48,40 @@ run_resource_manager :: proc(manager: ^Resource_Manager) {
 			multiplier := od.add(manager.multiplier[i], od.bigfloat{1, 0})
 			accumilator = od.mul(accumilator, multiplier)
 		}
-
 		for i in 0 ..< len(manager.exponent) {
 			exponent := od.add(manager.exponent[i], od.bigfloat{1, 0})
 			accumilator = od.add(accumilator, exponent)
 		}
 		manager.cached_income = accumilator
 		manager.update = false
+		if manager.static {
+			manager.output^ = accumilator
+		}
 	}
-	manager.output^ = od.add(
-		manager.output^,
-		od.mul(manager.cached_income, manager.external_multiplier^),
-	)
+	if !manager.static {
+		manager.output^ = od.add(
+			manager.output^,
+			od.mul(manager.cached_income, manager.external_multiplier^),
+		)
+	}
+  manager.indexes = [3]i32{0,0,0}
 }
 
-update_resource :: proc(
-	manager: ^Resource_Manager,
-	set_val: od.bigfloat,
-	index: int,
-	boost_type: Boost_Type,
-) {
+update_resource :: proc(manager: ^Resource_Manager, set_val: od.bigfloat, boost_type: Boost_Type) {
 	manager.update = true
 	switch boost_type {
 	case Boost_Type.base:
+		index := manager.indexes[0]
 		manager.base[index] = set_val
+		manager.indexes[0] += 1
 	case Boost_Type.multiplier:
+		index := manager.indexes[1]
 		manager.multiplier[index] = set_val
+		manager.indexes[1] += 1
 	case Boost_Type.exponent:
+		index := manager.indexes[2]
 		manager.base[index] = set_val
+		manager.indexes[2] += 1
 	}
 }
 
