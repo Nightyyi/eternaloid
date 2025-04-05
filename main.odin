@@ -30,25 +30,30 @@ Game_State :: struct {
 	frame:     i128,
 }
 
+			// odinfmt: disable
 Global_Data :: struct {
 	entities:       []i32,
 	total_entities: f64,
+
 	global_speed:   od.bigfloat,
-	town_speed:     od.bigfloat,
-	oid_max:        od.bigfloat,
-	oid:            od.bigfloat,
-	wood:           od.bigfloat,
-	food:           od.bigfloat,
-	stone:          od.bigfloat,
-	elixir:         od.bigfloat,
+    town_speed:     od.bigfloat,
+      oid_max:        od.bigfloat,
+      oid:            od.bigfloat,
+
+      wood:           od.bigfloat,
+      food:           od.bigfloat,
+      stone:          od.bigfloat,
+      elixir:         od.bigfloat,
 }
 
+			// odinfmt: enable
 Global_Resource :: struct {
 	oid:    rsc.Resource_Manager,
 	wood:   rsc.Resource_Manager,
 	food:   rsc.Resource_Manager,
 	stone:  rsc.Resource_Manager,
-	elixir: rsc.Resource_Manager,
+	
+  elixir: rsc.Resource_Manager,
 }
 
 Events :: struct {
@@ -102,8 +107,9 @@ Game_Tab_2 :: struct {
 }
 
 Game_Tab_3 :: struct {
-	pos_interpolate: f64,
-	on_deity:        i32,
+	on_deity: i32,
+	level:    [5]od.bigfloat,
+	favor:    [5]f64,
 }
 
 // settings tab
@@ -310,19 +316,16 @@ global :: proc(game: ^Game_State) {
 		rsc.update_resource(
 			&game.global_m.stone,
 			od.bigfloat{f64(game.global.entities[4]), -3},
-			0,
 			rsc.Boost_Type.base,
 		)
 		rsc.update_resource(
 			&game.global_m.wood,
 			od.bigfloat{f64(game.global.entities[3]), -1},
-			0,
 			rsc.Boost_Type.base,
 		)
 		rsc.update_resource(
 			&game.global_m.food,
 			od.bigfloat{f64(game.global.entities[5]), -1},
-			0,
 			rsc.Boost_Type.base,
 		)
 		game.events.update_town = false
@@ -757,7 +760,8 @@ town_tab :: proc(
 
 	set_town :: proc(game: ^Game_State, tile: nl.Coord) {
 		ok := bool(game.tab_1.fog_data[tile.x + tile.y * game.tab_1.map_mesh.size.x])
-		if (game.tab_1.hold != "") && ok {
+		ok2 := bool(game.tab_1.map_mesh.array[tile.x + tile.y * game.tab_1.map_mesh.size.x] > .25)
+		if (game.tab_1.hold != "") && ok && ok2 {
 			tile_index: i32 = game.tab_1.map_mesh.size.x * tile.y + tile.x
 			game.tab_1.building_area_data[tile_index] = game.tab_1.hold_t
 			game.events.update_fog = true
@@ -1117,20 +1121,20 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 		switch type {
 		case 0:
 			temp := od.pow_bfbf(od.bigfloat{2, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.wood, temp, 0, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.wood, temp, rsc.Boost_Type.multiplier)
 		case 1:
 			temp := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, temp, 1, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.oid, temp, rsc.Boost_Type.multiplier)
 		case 2:
 			temp := od.bigfloat{1, i128(level) * -2}
-			rsc.update_resource(&game.global_m.wood, temp, 2, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.wood, temp, rsc.Boost_Type.multiplier)
 			temp = od.bigfloat{1, i128(level)}
-			rsc.update_resource(&game.global_m.elixir, temp, 0, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.elixir, temp, rsc.Boost_Type.multiplier)
 		case 3:
-    // placeholder
+		// placeholder
 		case 4:
 			cost := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, cost, 0, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.oid, cost, rsc.Boost_Type.multiplier)
 		case 5:
 			game.tab_2.builders_plus[0] = level
 		case 6:
@@ -1141,18 +1145,18 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 
 		case 9:
 			temp := od.pow_bfbf(od.bigfloat{2, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, temp, 0, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.oid, temp, rsc.Boost_Type.multiplier)
 		case 10:
 			temp := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.food, temp, 1, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.food, temp, rsc.Boost_Type.multiplier)
 		case 11:
-      temp := od.bigfloat{1, i128(level)}
-			rsc.update_resource(&game.global_m.elixir, temp, 1, rsc.Boost_Type.multiplier)
+			temp := od.bigfloat{1, i128(level)}
+			rsc.update_resource(&game.global_m.elixir, temp, rsc.Boost_Type.multiplier)
 		case 12:
-    // placeholder
+		// placeholder
 		case 13:
 			cost := od.pow_bfbf(od.bigfloat{2, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.elixir, cost, 0, rsc.Boost_Type.multiplier)
+			rsc.update_resource(&game.global_m.elixir, cost, rsc.Boost_Type.multiplier)
 		case 14:
 			game.tab_2.builders_plus[1] = level
 		case 15:
@@ -1337,11 +1341,28 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 }
 
 sacrifice_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mouse_Data) {
-
 	nl.draw_png(nl.Coord{72, 0}, "sac\\tab.png", window, 2)
+	deity_img := []string {
+		"sac\\god_null.png",
+		"sac\\god_earth.png",
+		"sac\\god_food.png",
+		"sac\\god_oid.png",
+		"sac\\god_wood.png",
+	}
+	deities := []string{"GOD OF NULL", "GOD OF EARTH", "GOD OF FOOD", "GOD OF OID", "GOD OF WOOD"}
+
+	nl.draw_text_centered(
+		text = deities[game.tab_3.on_deity],
+		position = nl.Coord{(900 - 72) / 2, 40},
+		spacing = 0,
+		color = rl.Color{255, 255, 255, 255},
+		fontSize = 26,
+		window = window^,
+	)
 
 
-	// display_deities(game, window)
+	nl.draw_png_centered(nl.Coord{(900 - 72) / 2, 198}, deity_img[game.tab_3.on_deity], window, 2)
+
 }
 
 
@@ -1459,7 +1480,7 @@ main :: proc() {
 			built_max = 2,
 		},
 		tab_2 = Game_Tab_2{upgrade_levels = make_slice([]i32, 36)},
-		tab_3 = Game_Tab_3{pos_interpolate = 0, on_deity = 0},
+		tab_3 = Game_Tab_3{on_deity = 0},
 		seedi32 = i32(seed),
 	}
 	generate_objects(&game)

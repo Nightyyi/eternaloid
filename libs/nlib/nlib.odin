@@ -156,6 +156,35 @@ draw_text :: proc(
 	delete(text_c)
 }
 
+
+draw_text_centered :: proc(
+	text: string,
+	position: Coord,
+	spacing: f32,
+	color: rl.Color,
+	fontSize: f32,
+	window: Window_Data,
+) {
+	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window)
+	text_c: cstring = strings.clone_to_cstring(text)
+  text_size := rl.MeasureTextEx(
+		font = window.font,
+		text = text_c,
+		fontSize = fontSize * f32(virtual_ratio),
+		spacing = spacing * f32(virtual_ratio),
+  )
+	rl.DrawTextEx(
+		font = window.font,
+		text = text_c,
+		position = rl.Vector2{f32(virtual_pos.x)-text_size.x/4, f32(virtual_pos.y)},
+		fontSize = fontSize * f32(virtual_ratio),
+		spacing = spacing * f32(virtual_ratio),
+		tint = color,
+	)
+	delete(text_c)
+}
+
+
 draw_rectangle :: proc(position: Coord, size: Coord, window: Window_Data, color: rl.Color) {
 	virtual_pos, virtual_ratio := get_virtual_x_y_ratio(position, window)
 	rl.DrawRectangle(
