@@ -316,18 +316,15 @@ global :: proc(game: ^Game_State) {
 		rsc.update_resource(
 			&game.global_m.stone,
 			od.bigfloat{f64(game.global.entities[4]), -3},
-			rsc.Boost_Type.base,
-		)
+			rsc.Boost_Type.base,0)
 		rsc.update_resource(
 			&game.global_m.wood,
 			od.bigfloat{f64(game.global.entities[3]), -1},
-			rsc.Boost_Type.base,
-		)
+			rsc.Boost_Type.base,0)
 		rsc.update_resource(
 			&game.global_m.food,
 			od.bigfloat{f64(game.global.entities[5]), -1},
-			rsc.Boost_Type.base,
-		)
+			rsc.Boost_Type.base,0)
 		game.events.update_town = false
 	}
 
@@ -1129,20 +1126,20 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 		switch type {
 		case 0:
 			temp := od.pow_bfbf(od.bigfloat{2, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.wood, temp, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.wood, temp, rsc.Boost_Type.multiplier,0)
 		case 1:
 			temp := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, temp, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.oid, temp, rsc.Boost_Type.multiplier,0)
 		case 2:
 			temp := od.bigfloat{1, i128(level) * -2}
-			rsc.update_resource(&game.global_m.wood, temp, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.wood, temp, rsc.Boost_Type.multiplier,1)
 			temp = od.bigfloat{1, i128(level)}
-			rsc.update_resource(&game.global_m.elixir, temp, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.elixir, temp, rsc.Boost_Type.multiplier,0)
 		case 3:
 		// placeholder
 		case 4:
 			cost := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, cost, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.oid, cost, rsc.Boost_Type.multiplier,1)
 		case 5:
 			game.tab_2.builders_plus[0] = level
 		case 6:
@@ -1153,18 +1150,18 @@ upgrades_tab :: proc(game: ^Game_State, window: ^nl.Window_Data, mouse: ^nl.Mous
 
 		case 9:
 			temp := od.pow_bfbf(od.bigfloat{2, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.oid, temp, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.oid, temp, rsc.Boost_Type.multiplier,2)
 		case 10:
 			temp := od.pow_bfbf(od.bigfloat{3, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.food, temp, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.food, temp, rsc.Boost_Type.multiplier,0)
 		case 11:
 			temp := od.bigfloat{1, i128(level)}
-			rsc.update_resource(&game.global_m.elixir, temp, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.elixir, temp, rsc.Boost_Type.multiplier,1)
 		case 12:
 		// placeholder
 		case 13:
 			cost := od.pow_bfbf(od.bigfloat{2, 0}, od.bigfloat{f64(level), 0})
-			rsc.update_resource(&game.global_m.elixir, cost, rsc.Boost_Type.multiplier,)
+			rsc.update_resource(&game.global_m.elixir, cost, rsc.Boost_Type.multiplier,2)
 		case 14:
 			game.tab_2.builders_plus[1] = level
 		case 15:

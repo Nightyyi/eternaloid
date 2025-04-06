@@ -64,24 +64,23 @@ run_resource_manager :: proc(manager: ^Resource_Manager) {
 			od.mul(manager.cached_income, manager.external_multiplier^),
 		)
 	}
-  manager.indexes = [3]i32{0,0,0}
+	manager.indexes = [3]i32{0, 0, 0}
 }
 
-update_resource :: proc(manager: ^Resource_Manager, set_val: od.bigfloat, boost_type: Boost_Type) {
+update_resource :: proc(
+	manager: ^Resource_Manager,
+	set_val: od.bigfloat,
+	boost_type: Boost_Type,
+	index: i32,
+) {
 	manager.update = true
 	switch boost_type {
 	case Boost_Type.base:
-		index := manager.indexes[0]
 		manager.base[index] = set_val
-		manager.indexes[0] += 1
 	case Boost_Type.multiplier:
-		index := manager.indexes[1]
 		manager.multiplier[index] = set_val
-		manager.indexes[1] += 1
 	case Boost_Type.exponent:
-		index := manager.indexes[2]
 		manager.base[index] = set_val
-		manager.indexes[2] += 1
 	}
 }
 
