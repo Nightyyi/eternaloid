@@ -372,6 +372,14 @@ generate_spawn :: proc(game: ^Game_State) {
 	}
 	game.events.update_fog = true
 }
+
+show_fps :: proc(window: ^nl.Window_Data){
+  buf : [4]u8
+  fps := rl.GetFPS()
+  string := fmt.bprintf(buf[:],"%d",fps)
+  nl.draw_text(string,nl.Coord{0,384},1,rl.Color{255,255,255,255},16,window^)
+}
+
 // all town tab stuff
 draw_all_tiles :: proc(
 	tile_data: $T,
@@ -997,8 +1005,8 @@ town_tab :: proc(
 			game.tab_1.camera_vel.y * game.tab_1.camera_vel.y
 		if (sum_velocity > 1) {
 			game.tab_1.camera_real += nl.Coord {
-				i32(f64(game.tab_1.camera_vel.x) * game.tab_1.camera_zoom),
-				i32(f64(game.tab_1.camera_vel.y) * game.tab_1.camera_zoom),
+				i32(f64(game.tab_1.camera_vel.x) / game.tab_1.camera_zoom),
+				i32(f64(game.tab_1.camera_vel.y) / game.tab_1.camera_zoom),
 			}
 			if !game.slide {
 				game.tab_1.camera_vel.x = i32(f64(game.tab_1.camera_vel.x) * 0.999)
@@ -1544,6 +1552,7 @@ main :: proc() {
 			sacrifice_tab(&game, &window, &mouse)
 		}
 		nl.draw_borders(window)
+    show_fps(&window)
 		nl.mouse_cursor(&window, mouse, 0, 2)
 		animate_textures(window = &window, frame = game.frame)
 		global(&game)
@@ -1574,6 +1583,7 @@ main :: proc() {
 		delete(continent)
 	}
 	delete(game.tab_1.continent_sizes)
+	delete(game.tab_2.upgrade_levels)
 	delete(global_map)
 	delete(global_resource_managers.oid.base)
 	delete(global_resource_managers.oid.multiplier)
